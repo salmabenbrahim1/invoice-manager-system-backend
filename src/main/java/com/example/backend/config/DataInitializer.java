@@ -17,11 +17,11 @@ public class DataInitializer implements CommandLineRunner {
     private UserRepository userRepository;
 
     @Autowired
-    private PasswordEncoder passwordEncoder; // Injecter PasswordEncoder
+    private PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) {
-        // Vérifier si l'utilisateur admin existe déjà
+        // Check if the admin user already exists
         Optional<User> adminUserOpt = userRepository.findByEmail("admin@gmail.com");
 
         if (adminUserOpt.isEmpty()) {
