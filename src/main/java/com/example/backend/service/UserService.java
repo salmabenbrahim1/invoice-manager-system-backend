@@ -29,7 +29,6 @@ public class UserService {
 
     // Register a user with an encrypted password
     public User saveUser(User user) {
-        // Crypter le mot de passe avant de l'enregistrer
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
@@ -54,7 +53,7 @@ public class UserService {
                 "Welcome to Invoice Management! Your account has been successfully created.\n\n" +
                 "Email: " + user.getEmail() + "\n" +
                 "Password: " + generatedPassword + "\n\n" +
-                "Please log in to start managing your invoices efficiently. Don't forget to verify your account for full access.\n\n" +
+                "Please login to start managing your invoices efficiently. Don't forget to verify your account for full access.\n\n" +
                 "If you have any questions, feel free to contact our support team.\n\n" +
                 "Best regards,\n" +
                 "The Invoice Management Team";
