@@ -45,6 +45,18 @@ public class ClientController {
         }
     }
 
+    //Modify a client
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Client> updateClient(@PathVariable String id, @RequestBody Client client){
+       try{
+           Client updatedClient = clientService.updateClient(id, client);
+           return ResponseEntity.ok(updatedClient);
+       }catch (IllegalArgumentException e){
+           return ResponseEntity.badRequest().body(null);
+       }
+    }
+
 
 
     // Delete a client by ID

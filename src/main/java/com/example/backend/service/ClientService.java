@@ -51,6 +51,22 @@ public class ClientService {
         }
         clientRepository.deleteById(id);
     }
+    public Client updateClient(String id, Client updatedClient) {
+        if (id == null || id.isEmpty()) {
+            throw new IllegalArgumentException("Client ID cannot be null or empty");
+        }
+        if (!clientRepository.existsById(id)) {
+            throw new RuntimeException("Client not found with ID: " + id);
+        }
+
+        return clientRepository.findById(id).map(client -> {
+            client.setName(updatedClient.getName());
+            client.setEmail(updatedClient.getEmail());
+            client.setPhoneNumber(updatedClient.getPhoneNumber());
+            return clientRepository.save(client);
+        }).orElseThrow(() -> new RuntimeException("Failed to update client with ID: " + id));
+    }
+
 
 
 
