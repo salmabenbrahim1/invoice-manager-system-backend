@@ -20,53 +20,53 @@ public class UserService {
     private EmailService emailService;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;  // Ajouter PasswordEncoder
+    private PasswordEncoder passwordEncoder;  //  PasswordEncoder
 
-    // Recherche de l'utilisateur par email
+    // Search user by email
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
     }
 
-    // Enregistrer un utilisateur avec un mot de passe crypté
+    // Register a user with an encrypted password
     public User saveUser(User user) {
-        // Crypter le mot de passe avant de l'enregistrer
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
 
-    // Créer un nouvel utilisateur
+    // Create a new user
     public User createUser(User user) {
-        // Vérification si l'email existe déjà
+        // Check if the email already exists
         Optional<User> existingUser = userRepository.findByEmail(user.getEmail());
         if (existingUser.isPresent()) {
             throw new IllegalArgumentException("Email already exists");
         }
 
-        // Générer un mot de passe aléatoire et crypter le mot de passe
+        // Generate a random password and encrypt the password
         String generatedPassword = UUID.randomUUID().toString().substring(0, 8);
         user.setPassword(passwordEncoder.encode(generatedPassword));  // Crypter le mot de passe généré
 
-        // Enregistrer l'utilisateur dans la base de données
+        // Save the user to the database
         User savedUser = userRepository.save(user);
 
-        // Envoyer l'email de bienvenue
-        String emailText = "Hello "  +
-                "Your account has been created successfully!\n\n" +
+        // Send the welcome email
+        String emailText = "Hello "  + ",\n\n" +
+                "Welcome to Invoice Management! Your account has been successfully created.\n\n" +
                 "Email: " + user.getEmail() + "\n" +
                 "Password: " + generatedPassword + "\n\n" +
-                "Please log in and verify your account.\n\n" +
-                "Thank you!";
-        emailService.sendEmail(user.getEmail(), "Welcome to our platform!", emailText);
+                "Please login to start managing your invoices efficiently. Don't forget to verify your account for full access.\n\n" +
+                "If you have any questions, feel free to contact our support team.\n\n" +
+                "Best regards,\n" +
+                "The Invoice Management Team";
+        emailService.sendEmail(user.getEmail(),  "Welcome to Invoice Management!", emailText);
 
         return savedUser;
     }
 
-    // Récupérer tous les utilisateurs
+    // Retrieve all users
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
-
-    // Mettre à jour un utilisateur
+    // Update a user
     public User updateUser(String id, User user) {
         User existingUser = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
@@ -81,7 +81,7 @@ public class UserService {
         return userRepository.save(existingUser);
     }
 
-    // Supprimer un utilisateur
+    // Delete a user
     public void deleteUser(String id) {
         userRepository.deleteById(id);
     }
