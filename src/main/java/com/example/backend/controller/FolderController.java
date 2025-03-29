@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -32,6 +33,8 @@ public class FolderController {
          Folder folder = new Folder();
          folder.setFolderName(folderName);
          folder.setDescription(folderDescription);
+         folder.setCreatedAt(LocalDateTime.now()); // Set createdAt timestamp
+
 
          //Create a new Client
          Client newClient = null;
@@ -45,7 +48,7 @@ public class FolderController {
              // Scenario 2: Existing client
              folder.setClientId((String) clientData.get("id"));
          }
-         // Save the folder (and create a new client if needed)
+         // Saving the folder (and creating a new client if needed)
          Folder savedFolder = folderService.addFolder(folder, newClient);
          return new ResponseEntity<>(savedFolder, HttpStatus.CREATED);
      } catch (Exception e) {
