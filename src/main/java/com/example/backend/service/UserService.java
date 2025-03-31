@@ -6,9 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class UserService {
@@ -85,4 +83,27 @@ public class UserService {
     public void deleteUser(String id) {
         userRepository.deleteById(id);
     }
+
+    // Get dashboard stats
+    public Map<String, Long> getDashboardStats() {
+        List<User> users = userRepository.findAll();
+
+        // Count the number of 'COMPANY' users
+        long totalCompanies = users.stream()
+                .filter(user -> "COMPANY".equals(user.getRole()))
+                .count();
+
+        // Count the number of 'INDEPENDENT ACCOUNTANT' users
+        long totalAccountIndependents = users.stream()
+                .filter(user -> "INDEPENDENT ACCOUNTANT".equals(user.getRole()))
+                .count();
+
+        // Return stats in a map
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("totalCompanies", totalCompanies);
+        stats.put("totalAccountIndependents", totalAccountIndependents);
+
+        return stats;
+    }
+
 }

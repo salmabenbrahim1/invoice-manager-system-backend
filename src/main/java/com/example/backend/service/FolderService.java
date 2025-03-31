@@ -51,6 +51,7 @@ public class FolderService {
             if (clientId == null || clientId.isEmpty()) {
                 throw new IllegalArgumentException("Client Id must be provided for existing clients");
             }
+
             // Verify client exists
             Client existingClient = clientService.getClientById(clientId);
             if (existingClient == null) {
@@ -66,4 +67,17 @@ public class FolderService {
         }
         folderRepository.deleteById(id);
     }
+
+    public Folder updateFolder(String id, Folder updatedFolder) {
+        Folder existingFolder = folderRepository.findById(id).orElse(null);
+        if (existingFolder == null) {
+            throw new RuntimeException("Folder not found with id: " + id);
+        }
+        // Update folder fields
+        existingFolder.setFolderName(updatedFolder.getFolderName());
+        existingFolder.setDescription(updatedFolder.getDescription());
+
+        return folderRepository.save(existingFolder);
+    }
+
 }
