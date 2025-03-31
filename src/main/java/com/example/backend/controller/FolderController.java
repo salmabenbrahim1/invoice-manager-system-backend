@@ -21,7 +21,7 @@ public class FolderController {
     @PostMapping
     public ResponseEntity<Folder> createFolder(@RequestBody Map<String, Object> requestBody) {
      try{
-         String folderName =(String)requestBody.get("name");
+         String folderName =(String)requestBody.get("folderName");
          String folderDescription = (String) requestBody.get("description");
          Map<String, Object> clientData = (Map<String, Object>) requestBody.get("clientId");
 
@@ -82,4 +82,32 @@ public class FolderController {
         List<Folder> folders = folderService.getAllFolders();
         return ResponseEntity.ok(folders);
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Folder> updateFolder(@PathVariable String id, @RequestBody Map<String, Object> requestBody) {
+        try {
+            String folderName = (String) requestBody.get("folderName");
+            String folderDescription = (String) requestBody.get("description");
+            String clientId = (String) requestBody.get("clientId");
+
+            // Validate folder data
+            if (folderName == null || folderName.trim().isEmpty()) {
+                throw new IllegalArgumentException("Folder name cannot be empty");
+            }
+
+            // Create Folder object with updated data
+            Folder updatedFolder = new Folder();
+            updatedFolder.setFolderName(folderName);
+            updatedFolder.setDescription(folderDescription); // Add description here
+            updatedFolder.setClientId(clientId); // You can update the clientId if needed
+
+            // Call FolderService to update the folder
+            Folder folder = folderService.updateFolder(id, updatedFolder);
+
+            return new ResponseEntity<>(folder, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }
+
