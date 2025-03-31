@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Optional;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:3000")  // Allow requests from localhost:3000
+@CrossOrigin(origins = "http://localhost:3000")
 @RequestMapping("/api/auth")
 public class AuthController {
 
@@ -25,7 +25,7 @@ public class AuthController {
     public ResponseEntity<?> login(@RequestBody User user) {
         // Check if the password is null or empty
         if (user.getPassword() == null || user.getPassword().isEmpty()) {
-            return ResponseEntity.badRequest().body("Mot de passe manquant");
+            return ResponseEntity.badRequest().body("Missing password");
         }
 
         // Find the user by email
@@ -35,7 +35,7 @@ public class AuthController {
         if (existingUser.isPresent() && passwordEncoder.matches(user.getPassword(), existingUser.get().getPassword())) {
             return ResponseEntity.ok(existingUser.get());
         } else {
-            return ResponseEntity.badRequest().body("Email ou mot de passe incorrect");
+            return ResponseEntity.badRequest().body("Incorrect email or password");
         }
     }
 
@@ -44,7 +44,7 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody User user) {
         // Check if the password is null or empty
         if (user.getPassword() == null || user.getPassword().isEmpty()) {
-            return ResponseEntity.badRequest().body("Mot de passe manquant");
+            return ResponseEntity.badRequest().body("Missing password");
         }
 
         // Encrypt the password before saving the user

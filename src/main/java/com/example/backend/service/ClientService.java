@@ -25,6 +25,7 @@ public class ClientService {
         }
         return clientRepository.findById(id).orElse(null);
     }
+
     //add a client to db
     public Client addClient(Client client) {
         if (client == null) {
@@ -42,6 +43,8 @@ public class ClientService {
 
         return clientRepository.save(client);
     }
+
+    //delete a client
     public void deleteClient(String id) {
         if (id == null || id.isEmpty()) {
             throw new IllegalArgumentException("Client ID cannot be null or empty");
