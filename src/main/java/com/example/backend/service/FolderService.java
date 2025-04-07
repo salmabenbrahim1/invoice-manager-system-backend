@@ -3,6 +3,7 @@ package com.example.backend.service;
 import com.example.backend.model.Client;
 import com.example.backend.model.Folder;
 import com.example.backend.repository.FolderRepository;
+import com.example.backend.repository.InvoiceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +13,9 @@ import java.util.List;
 public class FolderService {
     @Autowired
     private  FolderRepository folderRepository;
+
+    @Autowired
+    private InvoiceRepository invoiceRepository;
 
     @Autowired
     private ClientService clientService;
@@ -65,8 +69,30 @@ public class FolderService {
         if (!folderRepository.existsById(id)) {
             throw new RuntimeException("Folder not found with id: " + id);
         }
+        invoiceRepository.deleteByFolderId(id);
+
         folderRepository.deleteById(id);
     }
+    public void removeInvoiceFromFolder(String invoiceId, String folderId) {
+        if (invoiceId == null || invoiceId.isEmpty()) {
+            throw new IllegalArgumentException("Invoice ID cannot be null or empty");
+        }
+
+        Folder folder = folderRepository.findById(folderId).orElse(null);
+
+        if (folder == null) {
+            throw new RuntimeException("Folder not found with ID: " + folderId);
+        }
+
+        boolean removed = folder.getInvoiceIds().removeIf(id -> id.equals(invoiceId));
+
+        if (removed) {
+            folderRepository.save(folder);
+        } else {
+            System.out.println("Invoice ID not found in folder");
+        }
+    }
+
 
     public Folder updateFolder(String id, Folder updatedFolder) {
         Folder existingFolder = folderRepository.findById(id).orElse(null);
