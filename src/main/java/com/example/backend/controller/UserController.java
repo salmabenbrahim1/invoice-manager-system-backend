@@ -3,6 +3,7 @@ package com.example.backend.controller;
 import com.example.backend.model.User;
 import com.example.backend.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,14 +21,12 @@ public class UserController {
     private UserService userService;
 
     @PostMapping
-    public ResponseEntity<?> createUser(@RequestBody User user) {
-        try {
-            User savedUser = userService.createUser(user);
-            return ResponseEntity.ok(savedUser);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        }
+    public ResponseEntity<User> createUser(@RequestBody User user) {
+        System.out.println("Received user: " + user);
+        User createdUser = userService.createUser(user);
+        return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
     }
+
 
     // Get dashboard stats
     @GetMapping("/dashboard")
@@ -56,7 +55,7 @@ public class UserController {
     public ResponseEntity<?> deleteUser(@PathVariable String id) {
         try {
             userService.deleteUser(id);
-            return ResponseEntity.ok("User deleted successfully");
+            return ResponseEntity.ok().build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
