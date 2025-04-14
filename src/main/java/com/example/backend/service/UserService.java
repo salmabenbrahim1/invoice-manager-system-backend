@@ -3,13 +3,16 @@ package com.example.backend.service;
 import com.example.backend.model.User;
 import com.example.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
 @Service
-public class UserService {
+public class UserService implements UserDetailsService {
 
     @Autowired
     private UserRepository userRepository;
@@ -18,7 +21,7 @@ public class UserService {
     private EmailService emailService;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;  //  PasswordEncoder
+    private PasswordEncoder passwordEncoder;
 
     // Search user by email
     public Optional<User> findByEmail(String email) {
@@ -33,20 +36,16 @@ public class UserService {
 
     // Create a new user
     public User createUser(User user) {
-        // Check if the email already exists
         Optional<User> existingUser = userRepository.findByEmail(user.getEmail());
         if (existingUser.isPresent()) {
             throw new IllegalArgumentException("Email already exists");
         }
 
-        // Generate a random password and encrypt the password
         String generatedPassword = UUID.randomUUID().toString().substring(0, 8);
-        user.setPassword(passwordEncoder.encode(generatedPassword));  // Crypter le mot de passe généré
+        user.setPassword(passwordEncoder.encode(generatedPassword));
 
-        // Save the user to the database
         User savedUser = userRepository.save(user);
 
-        // Send the welcome email
         String emailText = "Hello "  + ",\n\n" +
                 "Welcome to Invoice Management! Your account has been successfully created.\n\n" +
                 "Email: " + user.getEmail() + "\n" +
@@ -64,6 +63,7 @@ public class UserService {
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
+
     // Update a user
     public User updateUser(String id, User user) {
         User existingUser = userRepository.findById(id)
@@ -88,22 +88,33 @@ public class UserService {
     public Map<String, Long> getDashboardStats() {
         List<User> users = userRepository.findAll();
 
-        // Count the number of 'COMPANY' users
         long totalCompanies = users.stream()
                 .filter(user -> "COMPANY".equals(user.getRole()))
                 .count();
 
-        // Count the number of 'INDEPENDENT ACCOUNTANT' users
         long totalAccountIndependents = users.stream()
                 .filter(user -> "INDEPENDENT ACCOUNTANT".equals(user.getRole()))
                 .count();
 
-        // Return stats in a map
         Map<String, Long> stats = new HashMap<>();
         stats.put("totalCompanies", totalCompanies);
         stats.put("totalAccountIndependents", totalAccountIndependents);
 
         return stats;
+    }
+
+    // Spring Security
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+        // Return the UserDetails object
+        return org.springframework.security.core.userdetails.User
+                .withUsername(user.getEmail())  // Use the email as the username
+                .password(user.getPassword())   // Add the encrypted password
+                .roles(user.getRole())          // Add the user's role
+                .build();
     }
 
 }
