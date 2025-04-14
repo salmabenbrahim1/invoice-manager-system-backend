@@ -35,7 +35,8 @@ public class JwtUtils {
 
     public String generateToken(User user) {
         return Jwts.builder()
-                .setSubject(user.getEmail())
+                .setSubject(user.getEmail())  // email comme subject du token
+                .claim("id", user.getId())    // Ajoute l'ID de l'utilisateur dans le token
                 .claim("role", user.getRole())
                 .claim("companyName", user.getCompanyName())
                 .claim("firstName", user.getFirstName())
@@ -45,6 +46,7 @@ public class JwtUtils {
                 .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
     }
+
 
     public String generateRefreshToken(HashMap<String, Object> claims, UserDetails userDetails) {
         return Jwts.builder()
@@ -92,4 +94,21 @@ public class JwtUtils {
                 .getBody()
                 .getExpiration();
     }
+
+    private Claims extractAllClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(secretKey)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    public String extractUserId(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.get("id", String.class); // <- Maintenant on lit bien l'ID
+    }
+
+
+
+
 }
