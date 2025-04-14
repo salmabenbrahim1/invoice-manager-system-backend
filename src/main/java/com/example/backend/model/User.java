@@ -16,7 +16,7 @@ import java.util.Collections;
 public class User implements UserDetails {
 
     @Id
-    private String _id;
+    private String id;
 
     private String email;
     private String firstName;
@@ -28,7 +28,7 @@ public class User implements UserDetails {
     private String gender;
     private String cin;
 
-    // For Spring Security
+    // Implémentation de UserDetails
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.singleton(() -> "ROLE_" + role.toUpperCase());

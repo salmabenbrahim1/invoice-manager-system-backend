@@ -2,6 +2,7 @@ package com.example.backend.service;
 
 import com.example.backend.model.User;
 import com.example.backend.repository.UserRepository;
+import com.example.backend.security.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -22,6 +23,9 @@ public class UserService implements UserDetailsService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtUtils jwtUtils;
 
     // Search user by email
     public Optional<User> findByEmail(String email) {
@@ -46,7 +50,7 @@ public class UserService implements UserDetailsService {
 
         User savedUser = userRepository.save(user);
 
-        String emailText = "Hello "  + ",\n\n" +
+        String emailText = "Hello " + ",\n\n" +
                 "Welcome to Invoice Management! Your account has been successfully created.\n\n" +
                 "Email: " + user.getEmail() + "\n" +
                 "Password: " + generatedPassword + "\n\n" +
@@ -54,7 +58,7 @@ public class UserService implements UserDetailsService {
                 "If you have any questions, feel free to contact our support team.\n\n" +
                 "Best regards,\n" +
                 "The Invoice Management Team";
-        emailService.sendEmail(user.getEmail(),  "Welcome to Invoice Management!", emailText);
+        emailService.sendEmail(user.getEmail(), "Welcome to Invoice Management!", emailText);
 
         return savedUser;
     }
@@ -117,4 +121,37 @@ public class UserService implements UserDetailsService {
                 .build();
     }
 
+    public User getUserById(String id) {
+        Optional<User> user = userRepository.findById(id);  // Find user by ID from the database
+        if (user.isPresent()) {
+            return user.get();
+        } else {
+            throw new UsernameNotFoundException("User not found with id: " + id);
+        }
+    }
+
+    public User updateProfile(String userId, User updatedData) {
+        System.out.println("Received from frontend: " + updatedData);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if ("COMPANY".equals(user.getRole())) {
+            user.setCompanyName(updatedData.getCompanyName());
+            user.setPhone(updatedData.getPhone());
+        } else {
+            user.setFirstName(updatedData.getFirstName());
+            user.setLastName(updatedData.getLastName());
+            user.setCin(updatedData.getCin());
+            user.setGender(updatedData.getGender());
+            user.setPhone(updatedData.getPhone());
+        }
+
+        //  Update password only if not empty
+        if (updatedData.getPassword() != null && !updatedData.getPassword().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(updatedData.getPassword()));
+        }
+
+        return userRepository.save(user);
+    }
 }
