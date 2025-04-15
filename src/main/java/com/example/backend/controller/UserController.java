@@ -1,5 +1,6 @@
 package com.example.backend.controller;
 
+import com.example.backend.model.Client;
 import com.example.backend.model.User;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.security.JwtUtils;
@@ -35,6 +36,11 @@ public class UserController {
     @Autowired
     private UserRepository userRepository;
 
+    @GetMapping
+    public ResponseEntity<List<User>> getAllUsers() {
+        List<User> users = userService.getAllUsers();
+        return ResponseEntity.ok(users);
+    }
 
     @PostMapping
     public ResponseEntity<User> createUser(@RequestBody User user) {
@@ -42,6 +48,14 @@ public class UserController {
         User createdUser = userService.createUser(user);
         return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
     }
+
+//Activied compte
+    @PutMapping("/{id}/toggle-active")
+    public ResponseEntity<String> toggleUserActivation(@PathVariable String id) {
+        userService.toggleUserActivation(id);
+        return ResponseEntity.ok("User activation status toggled");
+    }
+
 
 
     // Get dashboard stats
@@ -51,11 +65,6 @@ public class UserController {
         return ResponseEntity.ok(stats);
     }
 
-    @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
-        List<User> users = userService.getAllUsers();
-        return ResponseEntity.ok(users);
-    }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateUser(@PathVariable String id, @RequestBody User user) {
@@ -115,8 +124,8 @@ public class UserController {
 
 
 
-}
 
+}
 
 
 

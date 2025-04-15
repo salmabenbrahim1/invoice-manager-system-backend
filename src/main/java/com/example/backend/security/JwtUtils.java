@@ -35,8 +35,8 @@ public class JwtUtils {
 
     public String generateToken(User user) {
         return Jwts.builder()
-                .setSubject(user.getEmail())  // email comme subject du token
-                .claim("id", user.getId())    // Ajoute l'ID de l'utilisateur dans le token
+                .setSubject(user.getEmail())
+                .claim("id", user.getId())
                 .claim("role", user.getRole())
                 .claim("companyName", user.getCompanyName())
                 .claim("firstName", user.getFirstName())
@@ -66,9 +66,9 @@ public class JwtUtils {
             return false;
         }
     }
-   public String extractUsername(String token) {
-       return extractClaims(token, Claims::getSubject);
-   }
+    public String extractUsername(String token) {
+        return extractClaims(token, Claims::getSubject);
+    }
 
     private <T> T extractClaims(String token, Function<Claims, T> claimsResolver) {
         return claimsResolver.apply(
@@ -83,7 +83,7 @@ public class JwtUtils {
 
     public boolean isTokenExpired(String token) {
 
-         return extractClaims(token, Claims::getExpiration).before(new Date());
+        return extractClaims(token, Claims::getExpiration).before(new Date());
     }
 
     public Date extractExpiration(String token) {
@@ -105,7 +105,7 @@ public class JwtUtils {
 
     public String extractUserId(String token) {
         Claims claims = extractAllClaims(token);
-        return claims.get("id", String.class); // <- Maintenant on lit bien l'ID
+        return claims.get("id", String.class);
     }
 
 

@@ -4,6 +4,7 @@ import com.example.backend.model.User;
 import com.example.backend.service.UserService;
 import com.example.backend.security.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -34,19 +35,33 @@ public class AuthController {
 
         Optional<User> existingUser = userService.findByEmail(user.getEmail());
 
-        if (existingUser.isPresent() && passwordEncoder.matches(user.getPassword(), existingUser.get().getPassword())) {
-            String jwtToken = jwtUtils.generateToken(existingUser.get());
+        if (existingUser.isPresent()) {
+            User foundUser = existingUser.get();
 
-            Map<String, Object> responseBody = new HashMap<>();
-            responseBody.put("token", jwtToken);
-            responseBody.put("role", existingUser.get().getRole()); // Assure-toi que getRole() existe
-            responseBody.put("email", existingUser.get().getEmail());
+            // Checks if the user is active
+            if (!foundUser.isActive()) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Your account is deactivated.");
+            }
 
-            return ResponseEntity.ok(responseBody);
+            // Check the password
+            if (passwordEncoder.matches(user.getPassword(), foundUser.getPassword())) {
+                String jwtToken = jwtUtils.generateToken(foundUser);
+
+                Map<String, Object> responseBody = new HashMap<>();
+                responseBody.put("token", jwtToken);
+                responseBody.put("role", foundUser.getRole());
+                responseBody.put("email", foundUser.getEmail());
+
+                return ResponseEntity.ok(responseBody);
+            } else {
+                return ResponseEntity.badRequest().body("Incorrect email or password");
+            }
         } else {
             return ResponseEntity.badRequest().body("Incorrect email or password");
         }
     }
+
+
 
     // Register endpoint
     @PostMapping("/register")
