@@ -19,11 +19,12 @@ import java.util.List;
 @Setter
 public class Folder {
     @Id
-    private String _id;
+    private String id;
     private String folderName;
     private String description;
     private String clientId;
-    private List<String> invoiceIds=  new ArrayList<>();// List of invoice IDs
+
+    private List<String> invoiceIds =  new ArrayList<>();// List of invoice IDs
 
     @CreatedDate
     private LocalDateTime createdAt;

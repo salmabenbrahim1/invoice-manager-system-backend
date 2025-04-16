@@ -16,8 +16,7 @@ import java.time.LocalDateTime;
 public class Invoice {
 
    @Id
-    private String _id;
-
+    private String id;
     private String img;
     private String invoiceName;
     private String status;

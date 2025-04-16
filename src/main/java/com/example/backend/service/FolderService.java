@@ -46,7 +46,7 @@ public class FolderService {
         if(newClient!= null){
             //Create a new Client and associate with folder
             Client savedClient = clientService.addClient(newClient);
-            folder.setClientId(savedClient.get_id()); //set the new client's ID in the folders collection
+            folder.setClientId(savedClient.getId()); //set the new client's ID in the folders collection
         }
         // Scenario 2: Existing client
         else {
