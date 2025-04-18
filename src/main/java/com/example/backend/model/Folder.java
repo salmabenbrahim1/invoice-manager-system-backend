@@ -23,7 +23,8 @@ public class Folder {
     private String folderName;
     private String description;
     private String clientId;
-    private List<String> invoiceIds=  new ArrayList<>();// List of invoice IDs
+
+    private List<String> invoiceIds =  new ArrayList<>();// List of invoice IDs
 
     @CreatedDate
     private LocalDateTime createdAt;

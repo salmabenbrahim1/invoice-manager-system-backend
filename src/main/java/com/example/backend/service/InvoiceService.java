@@ -66,7 +66,7 @@ public class InvoiceService {
         Folder folder = folderRepository.findById(invoice.getFolderId())
                 .orElseThrow(() -> new RuntimeException("Folder not found with ID: " + invoice.getFolderId()));
 
-        folder.getInvoiceIds().add(savedInvoice.get_id());
+        folder.getInvoiceIds().add(savedInvoice.getId());
         folderRepository.save(folder);
 
         return savedInvoice;

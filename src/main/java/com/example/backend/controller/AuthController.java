@@ -16,6 +16,7 @@ import java.util.Optional;
 @RestController
 @CrossOrigin(origins = "http://localhost:3000")
 @RequestMapping("/api/auth")
+
 public class AuthController {
 
     @Autowired
@@ -74,7 +75,6 @@ public class AuthController {
         // Hasher password
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         User savedUser = userService.saveUser(user);
-
 
         return ResponseEntity.ok(savedUser);
     }
