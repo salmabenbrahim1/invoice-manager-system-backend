@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 @Document(collection ="folders")
 public class Folder {
     @Id
-    private String _id;
+    private String id;
     private String folderName;
     private String description;
     private String clientId;
