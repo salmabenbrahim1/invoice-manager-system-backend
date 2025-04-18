@@ -1,36 +1,70 @@
 package com.example.backend.controller;
 
+import com.example.backend.model.Client;
 import com.example.backend.model.User;
+import com.example.backend.repository.UserRepository;
+import com.example.backend.security.JwtUtils;
 import com.example.backend.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:3000")  // Allow requests from localhost:3000
+@CrossOrigin(origins = "http://localhost:3000")
 @RequestMapping("/api/users")
 public class UserController {
 
     @Autowired
     private UserService userService;
+    @Autowired
+    private JwtUtils jwtUtils;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
-    @PostMapping
-    public ResponseEntity<?> createUser(@RequestBody User user) {
-        try {
-            User savedUser = userService.createUser(user);
-            return ResponseEntity.ok(savedUser);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        }
-    }
+    @Autowired
+    private UserRepository userRepository;
 
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
         List<User> users = userService.getAllUsers();
         return ResponseEntity.ok(users);
     }
+
+    @PostMapping
+    public ResponseEntity<User> createUser(@RequestBody User user) {
+        System.out.println("Received user: " + user);
+        User createdUser = userService.createUser(user);
+        return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
+    }
+
+//Activied compte
+    @PutMapping("/{id}/toggle-active")
+    public ResponseEntity<String> toggleUserActivation(@PathVariable String id) {
+        userService.toggleUserActivation(id);
+        return ResponseEntity.ok("User activation status toggled");
+    }
+
+
+
+    // Get dashboard stats
+    @GetMapping("/dashboard")
+    public ResponseEntity<Map<String, Long>> getDashboardStats() {
+        Map<String, Long> stats = userService.getDashboardStats();
+        return ResponseEntity.ok(stats);
+    }
+
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateUser(@PathVariable String id, @RequestBody User user) {
@@ -46,9 +80,52 @@ public class UserController {
     public ResponseEntity<?> deleteUser(@PathVariable String id) {
         try {
             userService.deleteUser(id);
-            return ResponseEntity.ok("User deleted successfully");
+            return ResponseEntity.ok().build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
+
+
+    // Get profile of the current user
+    @GetMapping("/me")
+    public ResponseEntity<User> getProfile(@RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            String userId = jwtUtils.extractUserId(token);
+
+            User user = userService.getUserById(userId);
+
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            }
+
+            return ResponseEntity.ok(user);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+    // Update profile of the current user
+    @PutMapping("/me")
+    public ResponseEntity<?> updateProfile(@RequestHeader("Authorization") String authHeader, @RequestBody User user) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            String userId = jwtUtils.extractUserId(token);
+
+            User updatedUser = userService.updateProfile(userId, user);
+
+            return ResponseEntity.ok(updatedUser);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error updating profile: " + e.getMessage());
+        }
+    }
+
+
+
+
+
 }
+
+
+

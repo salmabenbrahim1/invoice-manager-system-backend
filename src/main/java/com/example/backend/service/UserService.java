@@ -2,74 +2,65 @@ package com.example.backend.service;
 
 import com.example.backend.model.User;
 import com.example.backend.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.velocity.exception.ResourceNotFoundException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class UserService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final EmailService emailService;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private EmailService emailService;
+    public UserService(UserRepository userRepository, EmailService emailService,
+                       PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.emailService = emailService;
+        this.passwordEncoder = passwordEncoder;
+    }
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;  //  PasswordEncoder
-
-    // Search user by email
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
     }
 
-    // Register a user with an encrypted password
     public User saveUser(User user) {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
 
-    // Create a new user
     public User createUser(User user) {
-        // Check if the email already exists
-        Optional<User> existingUser = userRepository.findByEmail(user.getEmail());
-        if (existingUser.isPresent()) {
-            throw new IllegalArgumentException("Email already exists");
-        }
+        userRepository.findByEmail(user.getEmail())
+                .ifPresent(u -> { throw new IllegalArgumentException("Email already exists"); });
 
-        // Generate a random password and encrypt the password
         String generatedPassword = UUID.randomUUID().toString().substring(0, 8);
-        user.setPassword(passwordEncoder.encode(generatedPassword));  // Crypter le mot de passe généré
+        user.setPassword(passwordEncoder.encode(generatedPassword));
 
-        // Save the user to the database
         User savedUser = userRepository.save(user);
-
-        // Send the welcome email
-        String emailText = "Hello "  + ",\n\n" +
-                "Welcome to Invoice Management! Your account has been successfully created.\n\n" +
-                "Email: " + user.getEmail() + "\n" +
-                "Password: " + generatedPassword + "\n\n" +
-                "Please login to start managing your invoices efficiently. Don't forget to verify your account for full access.\n\n" +
-                "If you have any questions, feel free to contact our support team.\n\n" +
-                "Best regards,\n" +
-                "The Invoice Management Team";
-        emailService.sendEmail(user.getEmail(),  "Welcome to Invoice Management!", emailText);
+        sendWelcomeEmail(user, generatedPassword);
 
         return savedUser;
     }
 
-    // Retrieve all users
+    private void sendWelcomeEmail(User user, String password) {
+        String emailText = String.format(
+                "Hello,\n\nWelcome to Invoice Management! Your account has been created.\n\n" +
+                        "Email: %s\nPassword: %s\n\n" +
+                        "Please login and verify your account.\n\nBest regards,\nThe Team",
+                user.getEmail(), password);
+
+        emailService.sendEmail(user.getEmail(), "Welcome!", emailText);
+    }
+
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
-    // Update a user
+
     public User updateUser(String id, User user) {
-        User existingUser = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User existingUser = getUserById(id);
         existingUser.setEmail(user.getEmail());
         existingUser.setFirstName(user.getFirstName());
         existingUser.setLastName(user.getLastName());
@@ -81,8 +72,61 @@ public class UserService {
         return userRepository.save(existingUser);
     }
 
-    // Delete a user
     public void deleteUser(String id) {
         userRepository.deleteById(id);
     }
+
+    public Map<String, Long> getDashboardStats() {
+        List<User> users = getAllUsers();
+
+        return Map.of(
+                "totalCompanies", countUsersByRole(users, "COMPANY"),
+                "totalAccountIndependents", countUsersByRole(users, "INDEPENDENT ACCOUNTANT")
+        );
+    }
+
+    private long countUsersByRole(List<User> users, String role) {
+        return users.stream().filter(u -> role.equals(u.getRole())).count();
+    }
+
+    public User getUserById(String id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + id));
+    }
+
+    public User updateProfile(String userId, User updatedData) {
+        User user = getUserById(userId);
+
+        if ("COMPANY".equals(user.getRole())) {
+            user.setCompanyName(updatedData.getCompanyName());
+            user.setPhone(updatedData.getPhone());
+        } else {
+            user.setFirstName(updatedData.getFirstName());
+            user.setLastName(updatedData.getLastName());
+            user.setCin(updatedData.getCin());
+            user.setGender(updatedData.getGender());
+            user.setPhone(updatedData.getPhone());
+        }
+
+        if (updatedData.getPassword() != null && !updatedData.getPassword().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(updatedData.getPassword()));
+        }
+
+        return userRepository.save(user);
+    }
+
+// Activied compte
+    public void toggleUserActivation(String id) {
+        Optional<User> optionalUser = userRepository.findById(id);
+        if (optionalUser.isPresent()) {
+            User user = optionalUser.get();
+            user.setActive(!user.isActive());
+            userRepository.save(user);
+        } else {
+            throw new IllegalArgumentException("User not found");
+        }
+    }
+
+
+
 }
