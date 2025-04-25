@@ -1,131 +1,180 @@
 package com.example.backend.controller;
 
-import com.example.backend.model.Client;
 import com.example.backend.model.User;
-import com.example.backend.repository.UserRepository;
 import com.example.backend.security.JwtUtils;
+import com.example.backend.dto.UserCreateDTO;
 import com.example.backend.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.NoSuchElementException;
 
 @RestController
 @CrossOrigin(origins = "http://localhost:3000")
+
 @RequestMapping("/api/users")
+@RequiredArgsConstructor
 public class UserController {
 
-    @Autowired
-    private UserService userService;
-    @Autowired
-    private JwtUtils jwtUtils;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserService userService;
+    private final JwtUtils jwtUtils;
 
-    @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
-        List<User> users = userService.getAllUsers();
-        return ResponseEntity.ok(users);
+    // Extract current authenticated user from JWT
+    private User getCurrentUser(HttpServletRequest request) {
+        String token = extractTokenFromRequest(request);
+        if (token == null) throw new SecurityException("Missing JWT token");
+        String username = jwtUtils.extractUsername(token);
+        return userService.getUserByEmail(username);
     }
 
+    // Extract token from Authorization header
+    private String extractTokenFromRequest(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            return header.substring(7);
+        }
+        return null;
+    }
+
+    // Create a new user ( from Admin or Company)
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody User user) {
-        System.out.println("Received user: " + user);
-        User createdUser = userService.createUser(user);
-        return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
+    public ResponseEntity<?> createUser(@RequestBody UserCreateDTO userCreateDTO, HttpServletRequest request) {
+        try {
+            User currentUser = getCurrentUser(request);
+            User createdUser = userService.createUser(currentUser, userCreateDTO);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while creating the user.");
+        }
     }
 
-//Activied compte
-    @PutMapping("/{id}/toggle-active")
-    public ResponseEntity<String> toggleUserActivation(@PathVariable String id) {
-        userService.toggleUserActivation(id);
-        return ResponseEntity.ok("User activation status toggled");
+    // Get all users (Admin sees all; others see their own profile)
+    @GetMapping
+    public ResponseEntity<?> getAllUsers(HttpServletRequest request) {
+        try {
+            User currentUser = getCurrentUser(request);
+            List<?> users = userService.getAllUsers(currentUser);
+            return ResponseEntity.ok(users);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error fetching users.");
+        }
     }
 
 
-
-    // Get dashboard stats
-    @GetMapping("/dashboard")
-    public ResponseEntity<Map<String, Long>> getDashboardStats() {
-        Map<String, Long> stats = userService.getDashboardStats();
-        return ResponseEntity.ok(stats);
+    //Get user by ID
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getUserById(@PathVariable String id, HttpServletRequest request) {
+        try {
+            User currentUser = getCurrentUser(request);
+            User user = userService.getUserById(id, currentUser);
+            return ResponseEntity.ok(user);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
+        }
     }
-
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable String id, @RequestBody User user) {
+    public ResponseEntity<?> updateUser(@PathVariable String id, @RequestBody User updatedUser, HttpServletRequest request) {
         try {
-            User updatedUser = userService.updateUser(id, user);
-            return ResponseEntity.ok(updatedUser);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        }
-    }
+            // Extract the current authenticated user from the request
+            User currentUser = getCurrentUser(request);
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable String id) {
-        try {
-            userService.deleteUser(id);
-            return ResponseEntity.ok().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        }
-    }
-
-
-    // Get profile of the current user
-    @GetMapping("/me")
-    public ResponseEntity<User> getProfile(@RequestHeader("Authorization") String authHeader) {
-        try {
-            String token = authHeader.replace("Bearer ", "");
-            String userId = jwtUtils.extractUserId(token);
-
-            User user = userService.getUserById(userId);
-
-            if (user == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            // Validate the updated user data (could also be done in the service layer)
+            if (updatedUser == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid user data.");
             }
 
-            return ResponseEntity.ok(user);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(null);
-        }
-    }
+            // Perform the user update via service
+            User updated = userService.updateUser(id, updatedUser, currentUser);
 
-    // Update profile of the current user
-    @PutMapping("/me")
-    public ResponseEntity<?> updateProfile(@RequestHeader("Authorization") String authHeader, @RequestBody User user) {
-        try {
-            String token = authHeader.replace("Bearer ", "");
-            String userId = jwtUtils.extractUserId(token);
+            // Return the updated user in the response
+            return ResponseEntity.ok(updated);
 
-            User updatedUser = userService.updateProfile(userId, user);
-
-            return ResponseEntity.ok(updatedUser);
+        } catch (SecurityException e) {
+            // Handle unauthorized access
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
+        } catch (NoSuchElementException e) {
+            // Handle case where user is not found
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error updating profile: " + e.getMessage());
+            // Handle general errors
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update user.");
         }
     }
 
 
+    // Delete user
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteUser(@PathVariable String id, HttpServletRequest request) {
+        try {
+            User currentUser = getCurrentUser(request);
+            userService.deleteUser(id, currentUser);
+            return ResponseEntity.noContent().build();
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found or could not be deleted.");
+        }
+    }
+
+    // Toggle activation status
+    @PatchMapping("/{id}/toggle-activation")
+    public ResponseEntity<?> toggleUserActivation(@PathVariable String id, HttpServletRequest request) {
+        try {
+            User currentUser = getCurrentUser(request);
+            userService.toggleUserActivation(id, currentUser);
+            return ResponseEntity.noContent().build();
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Could not toggle activation status.");
+        }
+    }
+
+    @GetMapping("/dashboard")
+    public ResponseEntity<?> getUserStats(HttpServletRequest request) {
+        try {
+            // Get current user from JWT token
+            User currentUser = getCurrentUser(request);
+
+            // Get statistics from service
+            Map<String, Long> stats = userService.getUserStats(currentUser);
+
+            // Return the statistics
+            return ResponseEntity.ok(stats);
+
+        } catch (SecurityException e) {
+            // Handle cases where JWT is invalid or missing
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Authentication error: " + e.getMessage());
+        }
 
 
+    }
+
+    // Get current authenticated user's profile
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUserProfile(HttpServletRequest request) {
+        try {
+            User currentUser = getCurrentUser(request);
+            return ResponseEntity.ok(currentUser);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unable to fetch user profile.");
+        }
+    }
 
 }
-
-
-

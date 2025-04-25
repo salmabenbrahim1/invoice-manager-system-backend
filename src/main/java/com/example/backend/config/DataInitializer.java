@@ -1,5 +1,6 @@
 package com.example.backend.config;
 
+import com.example.backend.model.Admin;
 import com.example.backend.model.User;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.service.UserService;
@@ -25,9 +26,9 @@ public class DataInitializer implements CommandLineRunner {
         Optional<User> adminUserOpt = userRepository.findByEmail("admin@gmail.com");
 
         if (adminUserOpt.isEmpty()) {
-            User adminUser = new User();
+            User adminUser = new Admin();
             adminUser.setEmail("admin@gmail.com");
-            adminUser.setPassword(passwordEncoder.encode("admin123")); // Hachage du mot de passe avant de l'enregistrer
+            adminUser.setPassword(passwordEncoder.encode("admin123"));
             adminUser.setRole("ADMIN");
 
             userRepository.save(adminUser);

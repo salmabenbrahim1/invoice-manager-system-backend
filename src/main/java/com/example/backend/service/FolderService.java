@@ -62,7 +62,7 @@ public class FolderService {
                 throw new RuntimeException("Client not found with ID: " + clientId);
             }
         }
-            return folderRepository.save(folder);
+        return folderRepository.save(folder);
     }
 
     public void deleteFolder(String id) {

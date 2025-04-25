@@ -24,7 +24,8 @@ public class Folder {
     private String description;
     private String clientId;
 
-    private List<String> invoiceIds =  new ArrayList<>();// List of invoice IDs
+    // List of invoice IDs
+    private List<String> invoiceIds =  new ArrayList<>();
 
     @CreatedDate
     private LocalDateTime createdAt;

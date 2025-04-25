@@ -16,5 +16,7 @@ public class Client {
     private String name;
     private String email;
     private String phoneNumber;
+    // eventually adding the adresse if the client
+
 
 }

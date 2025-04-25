@@ -20,40 +20,40 @@ public class FolderController {
 
     @PostMapping
     public ResponseEntity<Folder> createFolder(@RequestBody Map<String, Object> requestBody) {
-     try{
-         String folderName =(String)requestBody.get("folderName");
-         String folderDescription = (String) requestBody.get("description");
-         Map<String, Object> clientData = (Map<String, Object>) requestBody.get("clientId");
+        try{
+            String folderName =(String)requestBody.get("folderName");
+            String folderDescription = (String) requestBody.get("description");
+            Map<String, Object> clientData = (Map<String, Object>) requestBody.get("clientId");
 
-     // Validate folder data
-        if (folderName == null || folderName.trim().isEmpty()) {
-            throw new IllegalArgumentException("Folder name cannot be empty");
+            // Validate folder data
+            if (folderName == null || folderName.trim().isEmpty()) {
+                throw new IllegalArgumentException("Folder name cannot be empty");
+            }
+            // Create Folder object
+            Folder folder = new Folder();
+            folder.setFolderName(folderName);
+            folder.setDescription(folderDescription);
+            folder.setCreatedAt(LocalDateTime.now()); // Set createdAt timestamp
+
+
+            //Create a new Client
+            Client newClient = null;
+            if (clientData != null && clientData.get("id") == null) {
+                // Scenario 1: New client provided
+                newClient = new Client();
+                newClient.setName((String) clientData.get("name"));
+                newClient.setEmail((String) clientData.get("email"));
+                newClient.setPhoneNumber((String) clientData.get("phoneNumber"));
+            } else if (clientData != null) {
+                // Scenario 2: Existing client
+                folder.setClientId((String) clientData.get("id"));
+            }
+            // Saving the folder (and creating a new client if needed)
+            Folder savedFolder = folderService.addFolder(folder, newClient);
+            return new ResponseEntity<>(savedFolder, HttpStatus.CREATED);
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-         // Create Folder object
-         Folder folder = new Folder();
-         folder.setFolderName(folderName);
-         folder.setDescription(folderDescription);
-         folder.setCreatedAt(LocalDateTime.now()); // Set createdAt timestamp
-
-
-         //Create a new Client
-         Client newClient = null;
-         if (clientData != null && clientData.get("id") == null) {
-             // Scenario 1: New client provided
-             newClient = new Client();
-             newClient.setName((String) clientData.get("name"));
-             newClient.setEmail((String) clientData.get("email"));
-             newClient.setPhoneNumber((String) clientData.get("phoneNumber"));
-         } else if (clientData != null) {
-             // Scenario 2: Existing client
-             folder.setClientId((String) clientData.get("id"));
-         }
-         // Saving the folder (and creating a new client if needed)
-         Folder savedFolder = folderService.addFolder(folder, newClient);
-         return new ResponseEntity<>(savedFolder, HttpStatus.CREATED);
-     } catch (Exception e) {
-         return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
-     }
     }
 
 
@@ -72,8 +72,8 @@ public class FolderController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteFolder(@PathVariable String id) {
-            folderService.deleteFolder(id);
-            return ResponseEntity.noContent().build();
+        folderService.deleteFolder(id);
+        return ResponseEntity.noContent().build();
 
     }
 
@@ -110,4 +110,3 @@ public class FolderController {
         }
     }
 }
-
