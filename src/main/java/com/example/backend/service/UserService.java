@@ -115,7 +115,10 @@ public class UserService {
         return userRepository.save(user);
     }
 
-// Activied compte
+
+
+
+    // Activied compte
     public void toggleUserActivation(String id) {
         Optional<User> optionalUser = userRepository.findById(id);
         if (optionalUser.isPresent()) {

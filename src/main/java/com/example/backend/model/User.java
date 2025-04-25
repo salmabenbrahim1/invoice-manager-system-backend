@@ -24,16 +24,17 @@ public class User implements UserDetails {
     private String password;
     private String role;
     private String companyName;
+    private String companyId; // ID de l'entreprise
     private String gender;
     private String cin;
     private boolean isActive = true;
+
     // Implémentation de UserDetails
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         String authority = (role == null) ? "ROLE_USER" : "ROLE_" + role.toUpperCase();
         return Collections.singleton(() -> authority);
     }
-
 
     @Override
     public String getUsername() {
@@ -57,6 +58,6 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return isActive; //Prevents login if the user is disabled
+        return isActive; // Prévenir la connexion si l'utilisateur est désactivé
     }
 }
