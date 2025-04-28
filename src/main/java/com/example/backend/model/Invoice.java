@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection ="invoices")
-
 public class Invoice {
 
    @Id
@@ -26,11 +25,4 @@ public class Invoice {
 
     private String folderId;
 
-    public Invoice(String img,String invoiceName, String status,String folderId){
-        this.img = img;
-        this.invoiceName = invoiceName;
-        this.status = status;
-        this.folderId = folderId;
-        this.addedAt = LocalDateTime.now();
-    }
 }

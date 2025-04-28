@@ -23,7 +23,7 @@ public class JwtUtils {
             @Value("${jwt.secret.key}") String secret,
             @Value("${jwt.expiration.ms:3600000}") long expirationMs) {
 
-        // Enhanced key verification
+        // Enhanced key verification/decoding
         byte[] decodedKey = Base64.getDecoder().decode(secret);
         if (decodedKey.length < 32) {
             throw new IllegalArgumentException("The JWT key must be exactly 256 bits (32 bytes) after Base64 decoding. Current length: " + decodedKey.length * 8 + " bits");
@@ -34,18 +34,28 @@ public class JwtUtils {
     }
 
     public String generateToken(User user) {
-        return Jwts.builder()
+        JwtBuilder builder = Jwts.builder()
                 .setSubject(user.getEmail())
                 .claim("id", user.getId())
                 .claim("role", user.getRole())
-                .claim("companyName", user.getCompanyName())
-                .claim("firstName", user.getFirstName())
-                .claim("lastName", user.getLastName())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationMs))
-                .signWith(secretKey, SignatureAlgorithm.HS256)
-                .compact();
+                .signWith(secretKey, SignatureAlgorithm.HS256);
+
+        // Add role-specific claims
+        if (user instanceof com.example.backend.model.IndependentAccountant accountant) {
+            builder.claim("firstName", accountant.getFirstName());
+            builder.claim("lastName", accountant.getLastName());
+        } else if (user instanceof com.example.backend.model.Company company) {
+            builder.claim("companyName", company.getCompanyName());
+        } else if ("ADMIN".equalsIgnoreCase(user.getRole())) {
+            // Add any specific claims for Admin here if needed
+            builder.claim("admin", true);
+        }
+
+        return builder.compact();
     }
+
 
 
     public String generateRefreshToken(HashMap<String, Object> claims, UserDetails userDetails) {
@@ -53,10 +63,11 @@ public class JwtUtils {
                 .setClaims(claims)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + expirationMs)) // 7 jours
+                .setExpiration(new Date(System.currentTimeMillis() + 604800000L)) // 7 days
                 .signWith(secretKey)
                 .compact();
     }
+
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
         try {
@@ -66,9 +77,17 @@ public class JwtUtils {
             return false;
         }
     }
+
+
+
+    // Change extractUsername() to:
     public String extractUsername(String token) {
-        return extractClaims(token, Claims::getSubject);
+        String username = extractClaims(token, Claims::getSubject);
+        System.out.println("📧 JWT contains username: " + username); // Always log for debugging
+        return username;
     }
+
+
 
     private <T> T extractClaims(String token, Function<Claims, T> claimsResolver) {
         return claimsResolver.apply(
@@ -102,6 +121,8 @@ public class JwtUtils {
                 .parseClaimsJws(token)
                 .getBody();
     }
+
+
 
     public String extractUserId(String token) {
         Claims claims = extractAllClaims(token);

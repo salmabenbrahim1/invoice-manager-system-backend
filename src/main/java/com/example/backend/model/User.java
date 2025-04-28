@@ -1,39 +1,48 @@
 package com.example.backend.model;
 
-import lombok.Getter;
-import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.Collections;
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "role")
+@JsonSubTypes({
+        @JsonSubTypes.Type(value = Company.class, name = "COMPANY"),
+        @JsonSubTypes.Type(value = IndependentAccountant.class, name = "INDEPENDENT ACCOUNTANT"),
+        @JsonSubTypes.Type(value = Admin.class, name = "ADMIN"),
+        @JsonSubTypes.Type(value = CompanyAccountant.class, name = "INTERNAL ACCOUNTANT")
+})
+
 
 @Document(collection = "users")
-@Getter
-@Setter
-public class User implements UserDetails {
+@Data
+public  abstract class User implements UserDetails {
 
     @Id
     private String id;
     private String email;
-    private String firstName;
-    private String lastName;
     private String phone;
     private String password;
     private String role;
-    private String companyName;
-    private String companyId; // ID de l'entreprise
-    private String gender;
-    private String cin;
+
     private boolean isActive = true;
 
-    // Implémentation de UserDetails
+    @DBRef
+    @Field("created_by")
+    private User createdBy;
+
+
+    //For granted authority by role
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        String authority = (role == null) ? "ROLE_USER" : "ROLE_" + role.toUpperCase();
-        return Collections.singleton(() -> authority);
+        return Collections.singleton(() -> role);
     }
 
     @Override
@@ -58,6 +67,8 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return isActive; // Prévenir la connexion si l'utilisateur est désactivé
+
+        //Prevents login if the user is disabled
+        return isActive;
     }
 }
