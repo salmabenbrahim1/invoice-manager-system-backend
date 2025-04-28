@@ -57,8 +57,6 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while creating the user.");
         }
     }
-
-    // Get all users (Admin sees all; others see their own profile)
     @GetMapping
     public ResponseEntity<?> getAllUsers(HttpServletRequest request) {
         try {
@@ -136,8 +134,10 @@ public class UserController {
     public ResponseEntity<?> toggleUserActivation(@PathVariable String id, HttpServletRequest request) {
         try {
             User currentUser = getCurrentUser(request);
-            userService.toggleUserActivation(id, currentUser);
-            return ResponseEntity.noContent().build();
+            User updatedUser = userService.toggleUserActivation(id, currentUser);
+
+            // Return the updated user to the frontend
+            return ResponseEntity.ok(updatedUser);
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
         } catch (Exception e) {
@@ -174,6 +174,21 @@ public class UserController {
             return ResponseEntity.ok(currentUser);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unable to fetch user profile.");
+        }
+    }
+    @GetMapping("/check-email")
+    public ResponseEntity<Boolean> checkEmailExists(
+            @RequestParam String email,
+            HttpServletRequest request
+    ) {
+        try {
+            // Optional: Verify current user has permission to check emails
+            User currentUser = getCurrentUser(request);
+
+            boolean exists = userService.emailExists(email);
+            return ResponseEntity.ok(exists);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(false);
         }
     }
 

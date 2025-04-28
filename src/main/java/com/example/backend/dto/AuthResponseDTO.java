@@ -13,11 +13,13 @@ import java.util.Date;
     private String role;
     private String email;
     private boolean admin;
-   private boolean company;
-   private boolean independentAccountant;
+    private boolean company;
+    private boolean independentAccountant;
     private boolean companyAccountant;
+   private String refreshToken;
 
-    private Date expiration;
+
+   private Date expiration;
 
 
 

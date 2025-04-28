@@ -58,13 +58,14 @@ public class JwtUtils {
 
 
 
-    public String generateRefreshToken(HashMap<String, Object> claims, UserDetails userDetails) {
+    public String generateRefreshToken(User user) {
         return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(userDetails.getUsername())
-                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setSubject(user.getEmail())
+                .claim("id", user.getId())
+                .claim("role", user.getRole())
+                .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + 604800000L)) // 7 days
-                .signWith(secretKey)
+                .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
