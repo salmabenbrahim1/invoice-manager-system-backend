@@ -1,5 +1,5 @@
 package com.example.backend.repository;
-
+//
 import com.example.backend.model.Admin;
 import com.example.backend.model.Company;
 import com.example.backend.model.IndependentAccountant;

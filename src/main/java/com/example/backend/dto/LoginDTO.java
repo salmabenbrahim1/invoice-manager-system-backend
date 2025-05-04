@@ -6,6 +6,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
+//
 //Data Transfer Object(DTO) used to capture user login details.
 public class LoginDTO {
     @NotBlank

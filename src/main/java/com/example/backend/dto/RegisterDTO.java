@@ -6,7 +6,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-
+//
 //Data Transfer Object(DTO) used to capture user registration details.
 public class RegisterDTO {
     @NotBlank

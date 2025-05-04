@@ -18,7 +18,7 @@ import java.util.Date;
     private boolean companyAccountant;
    private String refreshToken;
 
-
+//
    private Date expiration;
 
 

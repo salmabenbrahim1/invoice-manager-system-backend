@@ -5,7 +5,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 
 import java.util.List;
-
+//
 public interface InvoiceRepository extends MongoRepository<Invoice,String> {
     List<Invoice> findByFolderId(String folderId);
     void deleteByFolderId(String folderId);

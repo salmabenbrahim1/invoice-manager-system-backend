@@ -10,7 +10,7 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 @Setter
 @Document(collection = "clients")
 public class Client {
-
+//
     @Id
     private String id;
 

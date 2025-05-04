@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FolderCreateDTO {
-
+//
     private String folderName;
     private String description;
     private String clientId;  // For existing client
