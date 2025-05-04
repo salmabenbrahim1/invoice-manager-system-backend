@@ -60,10 +60,10 @@ public class AuthService {
             case "COMPANY":
                 user = new Company();
                 break;
-            case "INDEPENDENT ACCOUNTANT":
+            case "INDEPENDENT_ACCOUNTANT":
                 user = new IndependentAccountant();
                 break;
-            case "INTERNAL ACCOUNTANT":
+            case "INTERNAL_ACCOUNTANT":
                 user = new CompanyAccountant();
                 break;
             default:
@@ -78,8 +78,8 @@ public class AuthService {
     private boolean isValidRole(String role) {
         return role.equalsIgnoreCase("ADMIN") ||
                 role.equalsIgnoreCase("COMPANY") ||
-                role.equalsIgnoreCase("INDEPENDENT ACCOUNTANT") ||
-                role.equalsIgnoreCase("INTERNAL ACCOUNTANT");
+                role.equalsIgnoreCase("INDEPENDENT_ACCOUNTANT") ||
+                role.equalsIgnoreCase("INTERNAL_ACCOUNTANT");
     }
 
 

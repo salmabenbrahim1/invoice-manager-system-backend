@@ -18,7 +18,11 @@ public class CompanyAccountant extends User {
     private List<String> folderIds = new ArrayList<>();
 
     public CompanyAccountant() {
-        this.setRole("INTERNAL ACCOUNTANT");
+        this.setRole("INTERNAL_ACCOUNTANT");
+    }
+
+    // Add a folder ID to the accountant's list of folder IDs
+    public void addFolderId(String folderId) {
+        this.folderIds.add(folderId);
     }
 }
-

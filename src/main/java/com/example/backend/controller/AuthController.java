@@ -121,6 +121,7 @@ public class AuthController {
 
         String refreshToken = authHeader.substring(7);
 
+        // Validate the refresh token
         if (!authService.validateToken(refreshToken)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid or expired refresh token"));
         }
@@ -130,8 +131,10 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid refresh token"));
         }
 
+        // Generate a new access token using the user
         String newAccessToken = authService.generateToken(user);
 
+        // Return the new access token
         Map<String, String> response = new HashMap<>();
         response.put("token", newAccessToken);
 

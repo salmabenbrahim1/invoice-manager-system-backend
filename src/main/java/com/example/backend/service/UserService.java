@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.security.Principal;
 import java.security.SecureRandom;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -59,7 +60,7 @@ public class UserService {
                 company.setCompanyName(dto.getCompanyName());
                 break;
 
-            case "INDEPENDENT ACCOUNTANT":
+            case "INDEPENDENT_ACCOUNTANT":
                 checkAdminPrivileges(currentUser);
                 newUser = populateCommonFields(new IndependentAccountant(), dto, currentUser);
                 IndependentAccountant independent = (IndependentAccountant) newUser;
@@ -69,7 +70,7 @@ public class UserService {
                 independent.setCin(dto.getCin());
                 break;
 
-            case "INTERNAL ACCOUNTANT":
+            case "INTERNAL_ACCOUNTANT":
                 checkCompanyPrivileges(currentUser);
                 newUser = populateCommonFields(new CompanyAccountant(), dto, currentUser);
                 CompanyAccountant internal = (CompanyAccountant) newUser;
@@ -301,7 +302,7 @@ public class UserService {
 
             // Invoices count by user type (unchanged)
             Long companyInvoices = invoiceRepository.countByUserRole("COMPANY");
-            Long accountantInvoices = invoiceRepository.countByUserRole("ACCOUNTANT");
+            Long accountantInvoices = invoiceRepository.countByUserRole("INDEPENDENT_ACCOUNTANT");
             stats.put("companyInvoices", companyInvoices != null ? companyInvoices : 0L);
             stats.put("accountantInvoices", accountantInvoices != null ? accountantInvoices : 0L);
         }
@@ -324,5 +325,17 @@ public class UserService {
         if (currentUser instanceof Admin || currentUser instanceof Company ) return true;
         return targetUser.getCreatedBy() != null && targetUser.getCreatedBy().getId().equals(currentUser.getId());
     }
+
+
+    public User getCurrentUser(Principal principal) {
+        if (principal == null) {
+            throw new SecurityException("No user is currently authenticated");
+        }
+
+        String email = principal.getName();  // Assuming the principal contains the email as the username
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found: " + email));
+    }
+
 
 }
