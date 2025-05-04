@@ -1,5 +1,6 @@
 package com.example.backend.service;
 
+import com.example.backend.dto.InvoiceCreateDTO;
 import com.example.backend.model.Folder;
 import com.example.backend.model.Invoice;
 import com.example.backend.repository.FolderRepository;
@@ -13,6 +14,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,24 +22,30 @@ import java.util.Optional;
 @Service
 public class InvoiceService {
 
-    private final InvoiceRepository invoiceRepository;
-    private final FolderRepository folderRepository;
+    @Autowired
+    private  InvoiceRepository invoiceRepository;
+
+    @Autowired
+    private FolderRepository folderRepository;
     @Autowired
     private FolderService folderService;
 
-    @Autowired
-    public InvoiceService(InvoiceRepository invoiceRepository, FolderRepository folderRepository) {
-        this.invoiceRepository = invoiceRepository;
-        this.folderRepository = folderRepository;
-    }
+
 
     // Fetch all invoices for a given folder
     public List<Invoice> getInvoicesByFolder(String folderId) {
         if (folderId == null || folderId.isEmpty()) {
             throw new IllegalArgumentException("Folder ID cannot be null or empty");
         }
-        return invoiceRepository.findByFolderId(folderId);
+
+        // Check if folder exists
+        Folder folder = folderRepository.findById(folderId)
+                .orElseThrow(() -> new RuntimeException("Folder not found with ID: " + folderId));
+
+        // Fetch invoices associated with the folder
+        return invoiceRepository.findByFolderId(folderId); // Ne pas jeter d’exception ici
     }
+
 
     // saving the uploaded file
     public String saveFile(MultipartFile file) throws IOException {
@@ -59,14 +67,27 @@ public class InvoiceService {
         Files.copy(file.getInputStream(), path);  // Save the file to the path
         return "/uploads/invoices/" + fileName;  // Return the relative path of the saved file
     }
-    // Save the invoice and associate it with the folder
-    public Invoice saveInvoice(Invoice invoice) {
-        // Save the invoice
+
+
+
+    public Invoice saveInvoice(MultipartFile file, InvoiceCreateDTO dto) throws IOException {
+        // 1. Save the image file
+        String savedImagePath = saveFile(file);
+
+        // 2. Create the Invoice entity from the DTO
+        Invoice invoice = new Invoice();
+        invoice.setInvoiceName(dto.getInvoiceName());
+        invoice.setStatus(dto.getStatus());
+        invoice.setFolderId(dto.getFolderId());
+        invoice.setImg(savedImagePath);
+        invoice.setAddedAt(LocalDateTime.now());
+
+        // 3. Save the invoice
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
-        // Fetch the folder and update its invoice list
-        Folder folder = folderRepository.findById(invoice.getFolderId())
-                .orElseThrow(() -> new RuntimeException("Folder not found with ID: " + invoice.getFolderId()));
+        // 4. Add invoice ID to folder
+        Folder folder = folderRepository.findById(dto.getFolderId())
+                .orElseThrow(() -> new RuntimeException("Folder not found with ID: " + dto.getFolderId()));
 
         folder.getInvoiceIds().add(savedInvoice.getId());
         folderRepository.save(folder);
@@ -74,48 +95,51 @@ public class InvoiceService {
         return savedInvoice;
     }
 
-    // Delete an invoice
+
+    // Delete invoice method
     public void deleteInvoice(String invoiceId) {
         if (invoiceId == null || invoiceId.isEmpty()) {
             throw new IllegalArgumentException("Invoice ID cannot be null or empty");
         }
 
-        // Fetch the invoice to get the folder ID
+        // Find and delete the invoice
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new RuntimeException("Invoice not found with ID: " + invoiceId));
 
-        String folderId = invoice.getFolderId();
+        // Remove invoice from the folder's invoice list
+        Folder folder = folderRepository.findById(invoice.getFolderId())
+                .orElseThrow(() -> new RuntimeException("Folder not found with ID: " + invoice.getFolderId()));
 
-        if (folderId != null) {
-            // Find the folder containing this invoice by invoiceId
-            Folder folder = folderRepository.findById(folderId).orElse(null);
+        folder.getInvoiceIds().remove(invoiceId);  // Remove the invoice ID from the folder's invoice list
+        folderRepository.save(folder);  // Save updated folder
 
-            if (folder != null) {
-                // Remove the invoiceId from the folder's invoiceIds list
-                folderService.removeInvoiceFromFolder(invoiceId, folderId);
-
-            }
-        }
-        // Delete the invoice itself
-        invoiceRepository.deleteById(invoiceId);
+        // Delete the invoice
+        invoiceRepository.delete(invoice);  // Delete the invoice
     }
 
-    // Update an invoice
-    public Invoice updateInvoice(String id, Invoice updatedInvoice) {
-        Invoice existingInvoice = invoiceRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Invoice not found with ID: " + id));
-
-        if (updatedInvoice.getInvoiceName() != null) {
-            existingInvoice.setInvoiceName(updatedInvoice.getInvoiceName());
-        }
-        if (updatedInvoice.getImg() != null) {
-            existingInvoice.setImg(updatedInvoice.getImg());
-        }
-        if (updatedInvoice.getStatus() != null) {
-            existingInvoice.setStatus(updatedInvoice.getStatus());
+    // Update invoice method
+    public Invoice updateInvoice(String invoiceId, InvoiceCreateDTO dto, MultipartFile file) throws IOException {
+        if (invoiceId == null || invoiceId.isEmpty()) {
+            throw new IllegalArgumentException("Invoice ID cannot be null or empty");
         }
 
-        return invoiceRepository.save(existingInvoice);
+        // Find the existing invoice
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Invoice not found with ID: " + invoiceId));
+
+        // If a new file is uploaded, save the file and update the image path
+        if (file != null && !file.isEmpty()) {
+            String newImagePath = saveFile(file);  // Save new file and get the path
+            invoice.setImg(newImagePath);  // Update the invoice's image path
+        }
+
+        // Update other fields
+        invoice.setInvoiceName(dto.getInvoiceName());
+        invoice.setStatus(dto.getStatus());
+        invoice.setFolderId(dto.getFolderId());
+
+        // Save and return the updated invoice
+        return invoiceRepository.save(invoice);
     }
     // Méthode pour mettre à jour une facture existante avec les données extraites
     public Invoice updateInvoiceWithExtractedData(String invoiceId, Invoice extractedData) {
@@ -137,6 +161,11 @@ public class InvoiceService {
 
         return invoiceRepository.save(invoice);
     }
+
+}
+
+
+
 
 }
 

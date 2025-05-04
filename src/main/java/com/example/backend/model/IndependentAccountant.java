@@ -18,6 +18,12 @@ public class IndependentAccountant extends User {
         private List<String> folderIds = new ArrayList<>();
 
         public IndependentAccountant() {
-                this.setRole("INDEPENDENT ACCOUNTANT");
+                // Set the role to include the ROLE_ prefix
+                this.setRole("INDEPENDENT_ACCOUNTANT");
+        }
+
+        // Add a folder ID to the accountant's list of folder IDs
+        public void addFolderId(String folderId) {
+                this.folderIds.add(folderId);
         }
 }

@@ -1,112 +1,129 @@
 package com.example.backend.controller;
 
-import com.example.backend.model.Client;
-import com.example.backend.model.Folder;
+import com.example.backend.dto.FolderCreateDTO;
+import com.example.backend.model.*;
+import com.example.backend.service.ClientService;
 import com.example.backend.service.FolderService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.backend.service.UserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
+import java.security.Principal;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/folders")
+@RequiredArgsConstructor
 public class FolderController {
-    @Autowired
-    private  FolderService folderService;
+
+    private final FolderService folderService;
+    private final ClientService clientService;
+    private final UserService userService;
+
+    // Create a new folder, and add existing or new client
 
     @PostMapping
-    public ResponseEntity<Folder> createFolder(@RequestBody Map<String, Object> requestBody) {
-        try{
-            String folderName =(String)requestBody.get("folderName");
-            String folderDescription = (String) requestBody.get("description");
-            Map<String, Object> clientData = (Map<String, Object>) requestBody.get("clientId");
-
-            // Validate folder data
-            if (folderName == null || folderName.trim().isEmpty()) {
-                throw new IllegalArgumentException("Folder name cannot be empty");
-            }
-            // Create Folder object
-            Folder folder = new Folder();
-            folder.setFolderName(folderName);
-            folder.setDescription(folderDescription);
-            folder.setCreatedAt(LocalDateTime.now()); // Set createdAt timestamp
-
-
-            //Create a new Client
-            Client newClient = null;
-            if (clientData != null && clientData.get("id") == null) {
-                // Scenario 1: New client provided
-                newClient = new Client();
-                newClient.setName((String) clientData.get("name"));
-                newClient.setEmail((String) clientData.get("email"));
-                newClient.setPhoneNumber((String) clientData.get("phoneNumber"));
-            } else if (clientData != null) {
-                // Scenario 2: Existing client
-                folder.setClientId((String) clientData.get("id"));
-            }
-            // Saving the folder (and creating a new client if needed)
-            Folder savedFolder = folderService.addFolder(folder, newClient);
-            return new ResponseEntity<>(savedFolder, HttpStatus.CREATED);
-        } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-
-
-
-
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getFolderById(@PathVariable String id) {
-        Folder folder = folderService.getFolderById(id);
-        if (folder == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "Folder not found with id: " + id));
-        }
-        return ResponseEntity.ok(folder);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteFolder(@PathVariable String id) {
-        folderService.deleteFolder(id);
-        return ResponseEntity.noContent().build();
-
-    }
-
-    @GetMapping
-    public ResponseEntity<List<Folder>> getAllFolders() {
-        List<Folder> folders = folderService.getAllFolders();
-        return ResponseEntity.ok(folders);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Folder> updateFolder(@PathVariable String id, @RequestBody Map<String, Object> requestBody) {
+    public ResponseEntity<Folder> createFolder(@RequestBody FolderCreateDTO folderCreateDTO, Principal principal) {
         try {
-            String folderName = (String) requestBody.get("folderName");
-            String folderDescription = (String) requestBody.get("description");
-            String clientId = (String) requestBody.get("clientId");
+            // Get the authenticated user (creator - accountant or company)
+            User creator = userService.getCurrentUser(principal);
 
-            // Validate folder data
-            if (folderName == null || folderName.trim().isEmpty()) {
-                throw new IllegalArgumentException("Folder name cannot be empty");
+            // Check if the client exists or create a new client
+            Client client;
+            if (folderCreateDTO.getClientId() != null && !folderCreateDTO.getClientId().isEmpty()) {
+                // If clientId is provided, fetch the existing client
+                client = clientService.getClientById(folderCreateDTO.getClientId());
+                if (client == null) {
+                    // If client not found, return an error
+                    return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+                }
+            } else {
+                // If clientId is not provided, create a new client
+                client = clientService.createClient(creator, folderCreateDTO.getClientName(),
+                        folderCreateDTO.getClientEmail(), folderCreateDTO.getClientPhone(),
+                        folderCreateDTO.getAssignedAccountantId());
             }
 
-            // Create Folder object with updated data
-            Folder updatedFolder = new Folder();
-            updatedFolder.setFolderName(folderName);
-            updatedFolder.setDescription(folderDescription); // Add description here
-            updatedFolder.setClientId(clientId); // You can update the clientId if needed
+            // Determine the creator's role
+            Role creatorRole = null;
+            if (creator instanceof Company) {
+                creatorRole = Role.COMPANY; // Company role
+            } else if (creator instanceof IndependentAccountant) {
+                creatorRole = Role.INDEPENDENT_ACCOUNTANT; // Independent Accountant role
+            } else if (creator instanceof Admin) {
+                creatorRole = Role.ADMIN; // Admin role
+            }
 
-            // Call FolderService to update the folder
-            Folder folder = folderService.updateFolder(id, updatedFolder);
+            // Create the folder linked to the client and authenticated user
+            Folder folder = new Folder(
+                    folderCreateDTO.getFolderName(),
+                    folderCreateDTO.getDescription(),
+                    client.getId(), // Use client ID (existing or newly created)
+                    creator.getId(),
+                    creatorRole // Pass the Role directly
+            );
 
-            return new ResponseEntity<>(folder, HttpStatus.OK);
+            // Create the folder
+            Folder createdFolder = folderService.createFolder(folder);
+
+            return new ResponseEntity<>(createdFolder, HttpStatus.CREATED);
         } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
     }
+
+    // Fetch folders created by the authenticated user
+    @GetMapping("/my-folders")
+    public ResponseEntity<List<Folder>> getFoldersByCreator(Principal principal) {
+        try {
+            // Get the authenticated user (creator - accountant or company)
+            User creator = userService.getCurrentUser(principal);
+
+            // Fetch folders created by this user
+            List<Folder> folders = folderService.getFoldersByCreatorId(creator.getId());
+
+            // For each folder, fetch the associated client and set the client details
+            for (Folder folder : folders) {
+                // Fetch the client for the folder
+                Client client = clientService.getClientById(folder.getClientId());
+                if (client != null) {
+                    // Set the client information to the folder
+                    folder.setClient(client); // This will populate the client field dynamically
+                }
+            }
+
+            return new ResponseEntity<>(folders, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+        }
+    }
+    // Update a folder
+    @PutMapping("/{folderId}")
+    public ResponseEntity<Folder> updateFolder(@PathVariable String folderId, @RequestBody Folder updatedFolder) {
+        try {
+            Folder folder = folderService.updateFolder(folderId, updatedFolder);
+            return new ResponseEntity<>(folder, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+        }
+    }
+    // Delete a folder
+    @DeleteMapping("/{folderId}")
+    public ResponseEntity<Void> deleteFolder(@PathVariable String folderId) {
+        try {
+            folderService.deleteFolder(folderId);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+
 }
+
+

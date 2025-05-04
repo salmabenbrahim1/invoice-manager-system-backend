@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.security.Principal;
 import java.security.SecureRandom;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -45,6 +46,7 @@ public class UserService {
     }
 
     public Map<String, Object> createUser(User currentUser, UserCreateDTO dto) {
+
         if (currentUser == null) {
             throw new IllegalArgumentException("Current user cannot be null");
         }
@@ -58,22 +60,28 @@ public class UserService {
                 newUser = populateCommonFields(new Company(), dto, currentUser);
                 ((Company) newUser).setCompanyName(dto.getCompanyName());
                 break;
-            case "INDEPENDENT ACCOUNTANT":
+        
+
+            case "INDEPENDENT_ACCOUNTANT":
                 checkAdminPrivileges(currentUser);
                 newUser = populateCommonFields(new IndependentAccountant(), dto, currentUser);
-                ((IndependentAccountant) newUser).setFirstName(dto.getFirstName());
-                ((IndependentAccountant) newUser).setLastName(dto.getLastName());
-                ((IndependentAccountant) newUser).setGender(dto.getGender());
-                ((IndependentAccountant) newUser).setCin(dto.getCin());
+                IndependentAccountant independent = (IndependentAccountant) newUser;
+                independent.setFirstName(dto.getFirstName());
+                independent.setLastName(dto.getLastName());
+                independent.setGender(dto.getGender());
+                independent.setCin(dto.getCin());
                 break;
-            case "INTERNAL ACCOUNTANT":
+
+            case "INTERNAL_ACCOUNTANT":
                 checkCompanyPrivileges(currentUser);
                 newUser = populateCommonFields(new CompanyAccountant(), dto, currentUser);
-                ((CompanyAccountant) newUser).setFirstName(dto.getFirstName());
-                ((CompanyAccountant) newUser).setLastName(dto.getLastName());
-                ((CompanyAccountant) newUser).setGender(dto.getGender());
-                ((CompanyAccountant) newUser).setCin(dto.getCin());
+                CompanyAccountant internal = (CompanyAccountant) newUser;
+                internal.setFirstName(dto.getFirstName());
+                internal.setLastName(dto.getLastName());
+                internal.setGender(dto.getGender());
+                internal.setCin(dto.getCin());
                 break;
+
             default:
                 throw new IllegalArgumentException("Unsupported role: " + dto.getRole());
         }
@@ -112,6 +120,66 @@ public class UserService {
 
         response.put("emailSent", emailSent);
         return response;
+        // Set the generated password
+        newUser.setPassword(passwordEncoder.encode(generatedPassword));
+
+        // Check the generated password being sent to the user
+        System.out.println("Generated password: " + generatedPassword);
+
+        // Save the created user
+        User savedUser = userRepository.save(newUser);
+
+        // Add the accountant ID to the company's list if applicable
+        if (savedUser instanceof CompanyAccountant && currentUser instanceof Company company) {
+            company.getAccountantIds().add(savedUser.getId());
+            userRepository.save(company);
+        }
+
+        // Sending email to the user
+        String subject = "Your Account Has Been Created Successfully";
+
+        // Creating an email body
+        String body;
+        if ("COMPANY".equals(savedUser.getRole())) {
+            body = String.format(
+                    "<html>" +
+                            "<body>" +
+                            "<p>Dear %s,</p>" +
+                            "<p>We are pleased to inform you that your account has been successfully created on Invox.</p>" +
+                            "<p>Below are your account credentials:</p>" +
+                            "<p><b>Username</b>: %s</p>" +
+                            "<p><b>Temporary Password</b>: %s</p>" +
+                            "<p>Please log in to the system and change your password as soon as possible for security reasons.</p>" +
+                            "To access your account, please visit the following link: http://localhost:3000/login <br><br>" +
+
+                            "<p>If you have any questions or need assistance, feel free to contact our support team.</p>" +
+                            "<p>Best regards,<br>Invox Team</p>" +
+                            "</body>" +
+                            "</html>",
+                    dto.getCompanyName(), dto.getEmail(), generatedPassword);
+        } else {
+            body = String.format(
+                    "<html>" +
+                            "<body>" +
+                            "<p>Dear %s,</p>" +
+                            "<p>We are pleased to inform you that your account has been successfully created on Invox.</p>" +
+                            "<p>Below are your account credentials:</p>" +
+                            "<p><b>Username</b>: %s</p>" +
+                            "<p><b>Temporary Password</b>: %s</p>" +
+                            "<p>Please log in to the system and change your password as soon as possible for security reasons.</p>" +
+                            "To access your account, please visit the following link: http://localhost:3000/login <br><br>" +
+
+                            "<p>If you have any questions or need assistance, feel free to contact our support team.</p>" +
+                            "<p>Best regards,<br>Invox Team</p>" +
+                            "</body>" +
+                            "</html>",
+                    dto.getFirstName(), dto.getEmail(), generatedPassword);
+        }
+
+        // Send the email
+        emailService.sendEmail(dto.getEmail(), subject, body);
+
+        return savedUser;
     }
 
 
@@ -270,7 +338,7 @@ public class UserService {
 
             // Invoices count by user type (unchanged)
             Long companyInvoices = invoiceRepository.countByUserRole("COMPANY");
-            Long accountantInvoices = invoiceRepository.countByUserRole("ACCOUNTANT");
+            Long accountantInvoices = invoiceRepository.countByUserRole("INDEPENDENT_ACCOUNTANT");
             stats.put("companyInvoices", companyInvoices != null ? companyInvoices : 0L);
             stats.put("accountantInvoices", accountantInvoices != null ? accountantInvoices : 0L);
         }
@@ -338,5 +406,17 @@ public class UserService {
     private void updateCompany(Company user, UserProfileUpdateDTO dto) {
         if (dto.getCompanyName() != null) user.setCompanyName(dto.getCompanyName());
     }
+
+
+    public User getCurrentUser(Principal principal) {
+        if (principal == null) {
+            throw new SecurityException("No user is currently authenticated");
+        }
+
+        String email = principal.getName();  // Assuming the principal contains the email as the username
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found: " + email));
+    }
+
 
 }

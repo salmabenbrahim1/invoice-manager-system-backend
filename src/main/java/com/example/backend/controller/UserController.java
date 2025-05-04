@@ -59,8 +59,6 @@ public class UserController {
         }
     }
 
-
-    // Get all users
     @GetMapping
     public ResponseEntity<?> getAllUsers(HttpServletRequest request) {
         try {
@@ -127,6 +125,7 @@ public class UserController {
         try {
             User currentUser = getCurrentUser(request);
             User updatedUser = userService.toggleUserActivation(id, currentUser);
+
             return ResponseEntity.ok(updatedUser);
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
@@ -184,4 +183,21 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(false);
         }
     }
+
+    @GetMapping("/check-email")
+    public ResponseEntity<Boolean> checkEmailExists(
+            @RequestParam String email,
+            HttpServletRequest request
+    ) {
+        try {
+            // Optional: Verify current user has permission to check emails
+            User currentUser = getCurrentUser(request);
+
+            boolean exists = userService.emailExists(email);
+            return ResponseEntity.ok(exists);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(false);
+        }
+    }
+
 }

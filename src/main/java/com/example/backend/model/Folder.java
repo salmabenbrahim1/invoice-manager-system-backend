@@ -5,7 +5,6 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -15,36 +14,46 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "folders")
-@Getter
-@Setter
 public class Folder {
     @Id
     private String id;
+
     private String folderName;
     private String description;
-    private String clientId;
+
 
     private int invoiceCount;
 
     // List of invoice IDs
     private List<String> invoiceIds =  new ArrayList<>();
 
+    private String clientId;         // Reference to the client
+    private String createdById;      // ID of the accountant who created the folder
+    private Role createdByRole;    // "INDEPENDENT" or "COMPANY"
+
+    private List<String> invoiceIds = new ArrayList<>();
+
     @CreatedDate
     private LocalDateTime createdAt;
+
+
 
     @Transient
     private Client client;
 
-
-    public Folder(String folderName, String description, String clientId) {
+    public Folder(String folderName, String description, String clientId, String createdById, Role createdByRole) {
         this.folderName = folderName;
         this.description = description;
         this.clientId = clientId;
+        this.createdById = createdById;
+        this.createdByRole = createdByRole;
         this.createdAt = LocalDateTime.now();
     }
+
     public void setInvoiceIds(List<String> invoiceIds) {
         this.invoiceIds = invoiceIds;
-        this.invoiceCount = invoiceIds.size();  // Met à jour le compte des factures
+        this.invoiceCount = invoiceIds.size();  
     }
 
+}
 }

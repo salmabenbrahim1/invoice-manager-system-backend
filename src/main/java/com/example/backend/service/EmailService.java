@@ -14,6 +14,7 @@ public class EmailService {
     @Autowired
     private JavaMailSender javaMailSender;
 
+
     @Autowired
     private EmailValidationService emailValidationService;
 
@@ -33,10 +34,10 @@ public class EmailService {
             javaMailSender.send(message);
             System.out.println("Email sent successfully to: " + toEmail);
             return true;
+
         } catch (MessagingException e) {
             System.err.println("Error sending email: " + e.getMessage());
             return false;
         }
     }
-
 }

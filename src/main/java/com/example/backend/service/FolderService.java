@@ -2,40 +2,37 @@ package com.example.backend.service;
 
 import com.example.backend.model.Client;
 import com.example.backend.model.Folder;
+import com.example.backend.repository.ClientRepository;
 import com.example.backend.repository.FolderRepository;
-import com.example.backend.repository.InvoiceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
+
 
 @Service
 public class FolderService {
-    @Autowired
-    private  FolderRepository folderRepository;
 
     @Autowired
-    private InvoiceRepository invoiceRepository;
-
+    private FolderRepository folderRepository;
     @Autowired
-    private ClientService clientService;
+    private ClientRepository clientRepository;
+
+    // Create folder method
+    public Folder createFolder(Folder folder) {
+        return folderRepository.save(folder);
+    }
 
 
-
-    public List<Folder> getAllFolders() {
-        List<Folder> folders = folderRepository.findAll();
-
+    // Get all folders created by a specific user (company or accountant)
+    public List<Folder> getFoldersByCreatorId(String creatorId) {
+        List<Folder> folders = folderRepository.findByCreatedById(creatorId);
         for (Folder folder : folders) {
-            // Retrieve and bind the client
-            Client client = clientService.getClientById(folder.getClientId());
-            if (client != null) {
-                folder.setClient(client);
-            }
-
-            int count = folder.getInvoiceIds() != null ? folder.getInvoiceIds().size() : 0;
-            folder.setInvoiceCount(count);
-            // Save the folder with the new account
-            folderRepository.save(folder);
+            // Fetch client details based on clientId and add it to folder
+            Optional<Client> clientOpt;
+            clientOpt = clientRepository.findById(folder.getClientId());
+            clientOpt.ifPresent(folder::setClient);  // Set the client details on the folder
         }
 
         return folders;
@@ -50,20 +47,11 @@ public class FolderService {
     public Folder addFolder(Folder folder, Client newClient) {
         if (folder == null) {
             throw new IllegalArgumentException("Folder cannot be null");
+    public Folder updateFolder(String folderId, Folder updatedFolder) {
+        Optional<Folder> existingFolderOpt = folderRepository.findById(folderId);
+        if (existingFolderOpt.isEmpty()) {
+            throw new RuntimeException("Folder not found with id: " + folderId);
         }
-        // Scenario 1: New client provided:
-        if(newClient!= null){
-            //Create a new Client and associate with folder
-            Client savedClient = clientService.addClient(newClient);
-            folder.setClientId(savedClient.getId()); //set the new client's ID in the folders collection
-        }
-        // Scenario 2: Existing client
-        else {
-            //validate clientId
-            String clientId = folder.getClientId();
-            if (clientId == null || clientId.isEmpty()) {
-                throw new IllegalArgumentException("Client Id must be provided for existing clients");
-            }
 
             // Verify client exists
             Client existingClient = clientService.getClientById(clientId);
@@ -74,14 +62,12 @@ public class FolderService {
         folder.setInvoiceCount(0);
         return folderRepository.save(folder);
     }
+        Folder existingFolder = existingFolderOpt.get();
+        existingFolder.setFolderName(updatedFolder.getFolderName());
+        existingFolder.setDescription(updatedFolder.getDescription());
+        return folderRepository.save(existingFolder);
 
-    public void deleteFolder(String id) {
-        if (!folderRepository.existsById(id)) {
-            throw new RuntimeException("Folder not found with id: " + id);
-        }
-        invoiceRepository.deleteByFolderId(id);
 
-        folderRepository.deleteById(id);
     }
     public void removeInvoiceFromFolder(String invoiceId, String folderId) {
         if (invoiceId == null || invoiceId.isEmpty()) {
@@ -118,5 +104,14 @@ public class FolderService {
 
         return folderRepository.save(existingFolder);
     }
+
+}
+    public void deleteFolder(String folderId) {
+        if (!folderRepository.existsById(folderId)) {
+            throw new RuntimeException("Folder not found with id: " + folderId);
+        }
+        folderRepository.deleteById(folderId);
+    }
+
 
 }

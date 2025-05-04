@@ -1,5 +1,6 @@
 package com.example.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.Data;
@@ -8,6 +9,7 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
@@ -15,9 +17,9 @@ import java.util.Collections;
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "role")
 @JsonSubTypes({
         @JsonSubTypes.Type(value = Company.class, name = "COMPANY"),
-        @JsonSubTypes.Type(value = IndependentAccountant.class, name = "INDEPENDENT ACCOUNTANT"),
+        @JsonSubTypes.Type(value = IndependentAccountant.class, name = "INDEPENDENT_ACCOUNTANT"),
         @JsonSubTypes.Type(value = Admin.class, name = "ADMIN"),
-        @JsonSubTypes.Type(value = CompanyAccountant.class, name = "INTERNAL ACCOUNTANT")
+        @JsonSubTypes.Type(value = CompanyAccountant.class, name = "INTERNAL_ACCOUNTANT")
 })
 
 
@@ -36,18 +38,26 @@ public  abstract class User implements UserDetails {
 
     @DBRef
     @Field("createdBy")
+
+
+    @JsonIgnore
+
     private User createdBy;
 
 
     //For granted authority by role
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singleton(() -> role);
+        return Collections.singleton(new SimpleGrantedAuthority("ROLE_" + role));
     }
+
+
+
+
 
     @Override
     public String getUsername() {
-        return email;
+        return this.email;
     }
 
     @Override

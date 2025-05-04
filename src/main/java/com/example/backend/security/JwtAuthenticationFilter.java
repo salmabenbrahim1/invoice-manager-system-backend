@@ -1,5 +1,6 @@
 package com.example.backend.security;
 
+import com.example.backend.model.User;
 import com.example.backend.service.OurUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -45,7 +46,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UserDetails userDetails = ourUserDetailsService.loadUserByUsername(userEmail);
 
             if (jwtUtils.isTokenValid(jwtToken, userDetails)) {
-                SecurityContext securityContext =SecurityContextHolder.createEmptyContext();
+                // If the token is valid, set the user details in the security context
+                SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
@@ -55,6 +57,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                // Now, you can access the actual User entity if needed:
+                if (userDetails instanceof OurUserDetailsService.CustomUserDetails) {
+                    User userEntity = ((OurUserDetailsService.CustomUserDetails) userDetails).getUserEntity();
+                    // Use the userEntity as needed
+                    System.out.println("User entity: " + userEntity);
+                }
             }
         }
 
