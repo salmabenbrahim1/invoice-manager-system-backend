@@ -24,7 +24,7 @@ public class Folder {
     private String clientId;         // Reference to the client
     private String createdById;      // ID of the accountant who created the folder
     private Role createdByRole;    // "INDEPENDENT" or "COMPANY"
-
+    private int invoiceCount;
     private List<String> invoiceIds = new ArrayList<>();
 
     @CreatedDate

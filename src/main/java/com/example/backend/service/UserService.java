@@ -45,7 +45,7 @@ public class UserService {
         }
     }
 
-    public User createUser(User currentUser, UserCreateDTO dto) {
+    public Map<String, Object> createUser(User currentUser, UserCreateDTO dto) {
         if (currentUser == null) {
             throw new IllegalArgumentException("Current user cannot be null");
         }
@@ -142,9 +142,16 @@ public class UserService {
         }
 
         // Send the email
-        emailService.sendEmail(dto.getEmail(), subject, body);
+        boolean emailSent = emailService.sendEmail(dto.getEmail(), subject, body);
 
-        return savedUser;
+        Map<String, Object> response = new HashMap<>();
+        response.put("user", savedUser);
+        response.put("emailSent", emailSent);
+        response.put("subject",subject);
+        response.put("body",body);
+        return response;
+
+
     }
 
 

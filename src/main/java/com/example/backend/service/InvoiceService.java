@@ -90,6 +90,8 @@ public class InvoiceService {
 
         folder.getInvoiceIds().add(savedInvoice.getId());
         folderRepository.save(folder);
+        updateInvoiceCount(dto.getFolderId());
+
 
         return savedInvoice;
     }
@@ -112,8 +114,11 @@ public class InvoiceService {
         folder.getInvoiceIds().remove(invoiceId);  // Remove the invoice ID from the folder's invoice list
         folderRepository.save(folder);  // Save updated folder
 
+
         // Delete the invoice
         invoiceRepository.delete(invoice);  // Delete the invoice
+        updateInvoiceCount(folder.getId());
+
     }
 
     // Update invoice method
@@ -140,6 +145,15 @@ public class InvoiceService {
         // Save and return the updated invoice
         return invoiceRepository.save(invoice);
     }
+    public void updateInvoiceCount(String folderId) {
+        Folder folder = folderRepository.findById(folderId)
+                .orElseThrow(() -> new RuntimeException("Folder not found with ID: " + folderId));
+
+        int count = invoiceRepository.findByFolderId(folderId).size();
+        folder.setInvoiceCount(count);
+        folderRepository.save(folder);
+    }
+
 }
 
 

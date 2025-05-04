@@ -47,8 +47,8 @@ public class UserController {
     public ResponseEntity<?> createUser(@RequestBody UserCreateDTO userCreateDTO, HttpServletRequest request) {
         try {
             User currentUser = getCurrentUser(request);
-            User createdUser = userService.createUser(currentUser, userCreateDTO);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+            Map<String, Object> response = userService.createUser(currentUser, userCreateDTO);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
         } catch (IllegalArgumentException e) {
@@ -57,6 +57,7 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while creating the user.");
         }
     }
+
     @GetMapping
     public ResponseEntity<?> getAllUsers(HttpServletRequest request) {
         try {
