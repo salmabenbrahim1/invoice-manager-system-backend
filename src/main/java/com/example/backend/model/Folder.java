@@ -24,6 +24,8 @@ public class Folder {
     private String description;
     private String clientId;
 
+    private int invoiceCount;
+
     // List of invoice IDs
     private List<String> invoiceIds =  new ArrayList<>();
 
@@ -40,4 +42,9 @@ public class Folder {
         this.clientId = clientId;
         this.createdAt = LocalDateTime.now();
     }
+    public void setInvoiceIds(List<String> invoiceIds) {
+        this.invoiceIds = invoiceIds;
+        this.invoiceCount = invoiceIds.size();  // Met à jour le compte des factures
+    }
+
 }

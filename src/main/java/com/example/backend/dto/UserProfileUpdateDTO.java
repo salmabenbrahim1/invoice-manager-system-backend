@@ -4,22 +4,17 @@ package com.example.backend.dto;
 import lombok.Data;
 
 @Data
-public class UserCreateDTO {
+public class UserProfileUpdateDTO {
     private String email;
     private String phone;
-    private String role;
+    private String password; // nouveau mot de passe (optionnel)
 
-    private String createdById;
-
-
-    // For individual accountants
+    // Pour les individus
     private String firstName;
     private String lastName;
     private String cin;
     private String gender;
 
-    // For companies
+    // Pour les entreprises
     private String companyName;
-
-
 }

@@ -1,16 +1,19 @@
 package com.example.backend.controller;
+
 import com.example.backend.model.*;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.security.JwtUtils;
 import com.example.backend.dto.LoginDTO;
 import com.example.backend.dto.RegisterDTO;
-
 import com.example.backend.dto.AuthResponseDTO;
+import com.example.backend.dto.RefreshTokenRequest;
 import com.example.backend.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -20,7 +23,6 @@ import java.util.Optional;
 @RestController
 @CrossOrigin(origins = "http://localhost:3000")
 @RequestMapping("/api/auth")
-
 public class AuthController {
 
     @Autowired
@@ -31,34 +33,24 @@ public class AuthController {
 
     // Login endpoint
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginDTO loginDTO) {
-        if (loginDTO.getEmail() == null || loginDTO.getEmail().isEmpty() ||
-                loginDTO.getPassword() == null || loginDTO.getPassword().isEmpty()) {
-            return ResponseEntity.badRequest().body("Email and password are required.");
-        }
-
+    public ResponseEntity<?> login(@Valid @RequestBody LoginDTO loginDTO) {
         Optional<User> userOpt = authService.authenticateUser(loginDTO.getEmail(), loginDTO.getPassword());
 
         if (userOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Incorrect email or password.");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Incorrect email or password."));
         }
 
         User user = userOpt.get();
 
-
-
-        // Generate JWT token
-        String token = authService.generateToken(user);
-
-        // Prepare response
         AuthResponseDTO response = new AuthResponseDTO();
-        response.setToken(token);
+        response.setToken(authService.generateToken(user));
+        response.setRefreshToken(authService.generateRefreshToken(user));
         response.setRole(user.getRole());
         response.setEmail(user.getEmail());
-
         response.setAdmin(user instanceof Admin);
         response.setCompany(user instanceof Company);
         response.setIndependentAccountant(user instanceof IndependentAccountant);
+        response.setCompanyAccountant(user instanceof CompanyAccountant);
 
         return ResponseEntity.ok(response);
     }
@@ -81,7 +73,6 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
 
-            // Return minimal user data needed by frontend
             Map<String, Object> response = new HashMap<>();
             response.put("email", user.getEmail());
             response.put("role", user.getRole());
@@ -98,12 +89,7 @@ public class AuthController {
 
     // Register endpoint
     @PostMapping("/register")
-    public ResponseEntity<?> register( @Valid @RequestBody RegisterDTO registerDTO) {
-        if (registerDTO.getEmail() == null || registerDTO.getEmail().isEmpty() ||
-                registerDTO.getPassword() == null || registerDTO.getPassword().isEmpty()) {
-            return ResponseEntity.badRequest().body("Email and password are required.");
-        }
-
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterDTO registerDTO) {
         try {
             User user = authService.registerUser(
                     registerDTO.getEmail(),
@@ -111,9 +97,9 @@ public class AuthController {
                     registerDTO.getRole()
             );
 
-            // Generate JWT token
             AuthResponseDTO response = new AuthResponseDTO();
             response.setToken(authService.generateToken(user));
+            response.setRefreshToken(authService.generateRefreshToken(user));
             response.setRole(user.getRole());
             response.setEmail(user.getEmail());
             response.setAdmin(user instanceof Admin);
@@ -121,10 +107,46 @@ public class AuthController {
             response.setIndependentAccountant(user instanceof IndependentAccountant);
             response.setCompanyAccountant(user instanceof CompanyAccountant);
 
-
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<?> refreshToken(@RequestHeader("Authorization") String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Refresh token is missing or invalid"));
+        }
+
+        String refreshToken = authHeader.substring(7);
+
+        if (!authService.validateToken(refreshToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid or expired refresh token"));
+        }
+
+        User user = authService.getUserFromToken(refreshToken);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid refresh token"));
+        }
+
+        String newAccessToken = authService.generateToken(user);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("token", newAccessToken);
+
+        return ResponseEntity.ok(response);
+    }
+
+    // Global handler for validation errors
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getAllErrors().forEach((error) -> {
+            String fieldName = ((FieldError) error).getField();
+            String errorMessage = error.getDefaultMessage();
+            errors.put(fieldName, errorMessage);
+        });
+        return ResponseEntity.badRequest().body(errors);
     }
 }

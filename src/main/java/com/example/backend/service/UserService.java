@@ -1,6 +1,7 @@
 package com.example.backend.service;
 
 import com.example.backend.dto.UserCreateDTO;
+import com.example.backend.dto.UserProfileUpdateDTO;
 import com.example.backend.model.*;
 import com.example.backend.repository.InvoiceRepository;
 import com.example.backend.repository.UserRepository;
@@ -23,89 +24,96 @@ public class UserService {
     private final InvoiceRepository invoiceRepository;
 
 
-    public User createUser(User currentUser, UserCreateDTO dto) {
-        if (!canManage(currentUser)) {
-            throw new SecurityException("Not authorized to create user with role: " + dto.getRole());
+    private <T extends User> T populateCommonFields(T user, UserCreateDTO dto, User creator) {
+        user.setEmail(dto.getEmail());
+        user.setPhone(dto.getPhone());
+        user.setCreatedBy(creator);
+        user.setActive(true);  // Ensure the user is active by default
+        return user;
+    }
+
+    private void checkAdminPrivileges(User user) {
+        if (!(user instanceof Admin)) {
+            throw new SecurityException("Only Admin can perform this action");
+        }
+    }
+
+    private void checkCompanyPrivileges(User user) {
+        if (!(user instanceof Company)) {
+            throw new SecurityException("Only Company can perform this action");
+        }
+    }
+
+    public Map<String, Object> createUser(User currentUser, UserCreateDTO dto) {
+        if (currentUser == null) {
+            throw new IllegalArgumentException("Current user cannot be null");
         }
 
         User newUser;
-        String generatedPassword = generateBase64Password(); // for generating passwords
+        String generatedPassword = generateBase64Password();
 
         switch (dto.getRole()) {
             case "COMPANY":
-                if (!(currentUser instanceof Admin)) {
-                    throw new SecurityException("Only Admin can create companies");
-                }
-                Company company = new Company();
-                company.setCompanyName(dto.getCompanyName());
-                company.setCreatedBy(currentUser);
-                newUser = company;
+                checkAdminPrivileges(currentUser);
+                newUser = populateCommonFields(new Company(), dto, currentUser);
+                ((Company) newUser).setCompanyName(dto.getCompanyName());
                 break;
-
             case "INDEPENDENT ACCOUNTANT":
-                if (!(currentUser instanceof Admin)) {
-                    throw new SecurityException("Only Admin can create independent accountants");
-                }
-                IndependentAccountant independent = new IndependentAccountant();
-                independent.setFirstName(dto.getFirstName());
-                independent.setLastName(dto.getLastName());
-                independent.setGender(dto.getGender());
-                independent.setCin(dto.getCin());
-                independent.setEmail(dto.getEmail());
-                independent.setPhone(dto.getPhone());
-                independent.setCreatedBy(currentUser);
-                newUser = independent;
+                checkAdminPrivileges(currentUser);
+                newUser = populateCommonFields(new IndependentAccountant(), dto, currentUser);
+                ((IndependentAccountant) newUser).setFirstName(dto.getFirstName());
+                ((IndependentAccountant) newUser).setLastName(dto.getLastName());
+                ((IndependentAccountant) newUser).setGender(dto.getGender());
+                ((IndependentAccountant) newUser).setCin(dto.getCin());
                 break;
             case "INTERNAL ACCOUNTANT":
-                if (!(currentUser instanceof Company)) {
-                    throw new SecurityException("Only Company can create internal accountants");
-                }
-                CompanyAccountant internal = new CompanyAccountant();
-                internal.setFirstName(dto.getFirstName());
-                internal.setLastName(dto.getLastName());
-                internal.setEmail(dto.getEmail());
-                internal.setPhone(dto.getPhone());
-                internal.setGender(dto.getGender());
-                internal.setCin(dto.getCin());
-                internal.setCreatedBy(currentUser);
-                newUser = internal;
-                // Save the accountant
-                User savedAccountant = userRepository.save(newUser);
-
-                // Add the accountant ID to the company's list
-                 company = (Company) currentUser;
-                company.getAccountantIds().add(savedAccountant.getId());
-                userRepository.save(company); // Update the company
-
-                return savedAccountant;
-
-
+                checkCompanyPrivileges(currentUser);
+                newUser = populateCommonFields(new CompanyAccountant(), dto, currentUser);
+                ((CompanyAccountant) newUser).setFirstName(dto.getFirstName());
+                ((CompanyAccountant) newUser).setLastName(dto.getLastName());
+                ((CompanyAccountant) newUser).setGender(dto.getGender());
+                ((CompanyAccountant) newUser).setCin(dto.getCin());
+                break;
             default:
                 throw new IllegalArgumentException("Unsupported role: " + dto.getRole());
         }
 
-        newUser.setEmail(dto.getEmail());
-        newUser.setPhone(dto.getPhone());
         newUser.setPassword(passwordEncoder.encode(generatedPassword));
-
         User savedUser = userRepository.save(newUser);
 
-
-        // Send email
-        String subject = "Your Account has been created";
-        String body;
-
-        if (savedUser.getRole().equals("COMPANY")) {
-            body = String.format("Hello %s,\n\nYour account has been created successfully. Your temporary password is: %s\n\nPlease change your password after logging in.", dto.getCompanyName(), generatedPassword);
-        } else {
-            body = String.format("Hello %s,\n\nYour account has been created successfully. Your temporary password is: %s\n\nPlease change your password after logging in.", dto.getFirstName(), generatedPassword);
+        // Ajouter le comptable à la liste de la société si besoin
+        if (savedUser instanceof CompanyAccountant && currentUser instanceof Company company) {
+            company.getAccountantIds().add(savedUser.getId());
+            userRepository.save(company);
         }
 
-        emailService.sendEmail(dto.getEmail(), subject, body);
+        // Envoi de l'e-mail
+        String subject = "Your Account Has Been Created Successfully";
+        String body = String.format(
+                "<html><body>" +
+                        "<p>Dear %s,</p>" +
+                        "<p>We are pleased to inform you that your account has been successfully created on Invox.</p>" +
+                        "<p><b>Username</b>: %s</p>" +
+                        "<p><b>Temporary Password</b>: %s</p>" +
+                        "<p>Please log in and change your password as soon as possible.</p>" +
+                        "<p>http://localhost:3000/login</p>" +
+                        "<p>Best regards,<br>Invox Team</p>" +
+                        "</body></html>",
+                dto.getFirstName() != null ? dto.getFirstName() : dto.getCompanyName(),
+                dto.getEmail(), generatedPassword
+        );
 
-        return savedUser;
+        boolean emailSent = emailService.sendEmail(dto.getEmail(), subject, body);
 
+        Map<String, Object> response = new HashMap<>();
+        response.put("user", savedUser);
+        response.put("subject", subject);
+        response.put("body", body);
+
+        response.put("emailSent", emailSent);
+        return response;
     }
+
 
     public List<?> getAllUsers(User currentUser) {
         if (currentUser instanceof Admin) {
@@ -123,6 +131,10 @@ public class UserService {
             throw new SecurityException("Not authorized to view this user");
         }
         return user;
+    }
+
+    public boolean emailExists(String email) {
+        return userRepository.existsByEmailIgnoreCase(email);
     }
 
     public User updateUser(String id, User updated, User currentUser) {
@@ -150,35 +162,49 @@ public class UserService {
         }
 
         // Update common fields
-        existing.setEmail(updated.getEmail());
-        existing.setPhone(updated.getPhone());
-        existing.setActive(updated.isActive()); // If applicable
+        updateCommonFields(existing, updated);
 
         // Role-specific updates
-        switch (existing) {
-            case IndependentAccountant accountant -> {
+        updateRoleSpecificFields(existing, updated);
+
+        return userRepository.save(existing);
+    }
+
+    private void updateCommonFields(User existing, User updated) {
+        existing.setEmail(updated.getEmail());
+        existing.setPhone(updated.getPhone());
+        existing.setActive(updated.isActive());
+    }
+
+    private void updateRoleSpecificFields(User existing, User updated) {
+        switch (existing.getClass().getSimpleName()) {
+            case "IndependentAccountant":
+                IndependentAccountant accountant = (IndependentAccountant) existing;
                 IndependentAccountant updatedAccountant = (IndependentAccountant) updated;
                 accountant.setFirstName(updatedAccountant.getFirstName());
                 accountant.setLastName(updatedAccountant.getLastName());
                 accountant.setGender(updatedAccountant.getGender());
                 accountant.setCin(updatedAccountant.getCin());
-            }
-            case CompanyAccountant accountant -> {
-                CompanyAccountant updatedAccountant = (CompanyAccountant) updated;
-                accountant.setFirstName(updatedAccountant.getFirstName());
-                accountant.setLastName(updatedAccountant.getLastName());
-                accountant.setGender(updatedAccountant.getGender());
-                accountant.setCin(updatedAccountant.getCin());
-            }
-            case Company company -> {
+                break;
+
+            case "CompanyAccountant":
+                CompanyAccountant companyAccountant = (CompanyAccountant) existing;
+                CompanyAccountant updatedCompanyAccountant = (CompanyAccountant) updated;
+                companyAccountant.setFirstName(updatedCompanyAccountant.getFirstName());
+                companyAccountant.setLastName(updatedCompanyAccountant.getLastName());
+                companyAccountant.setGender(updatedCompanyAccountant.getGender());
+                companyAccountant.setCin(updatedCompanyAccountant.getCin());
+                break;
+
+            case "Company":
+                Company company = (Company) existing;
                 Company updatedCompany = (Company) updated;
                 company.setCompanyName(updatedCompany.getCompanyName());
-            }
-            default -> throw new IllegalArgumentException("Unsupported user type: " + existing.getClass().getSimpleName());
+                break;
+
+            default:
+                throw new IllegalArgumentException("Unsupported user type: " + existing.getClass().getSimpleName());
         }
-
-
-        return userRepository.save(existing);
     }
 
     public void deleteUser(String id, User currentUser) {
@@ -192,16 +218,19 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
-    public void toggleUserActivation(String id, User currentUser) {
+    public User toggleUserActivation(String id, User currentUser) {
         User user = getUserById(id, currentUser);
         if (!canView(currentUser, user)) {
             throw new SecurityException("Not authorized to modify this user");
-        }        if (!(currentUser instanceof Admin || currentUser instanceof Company)) {
+        }
+        if (!(currentUser instanceof Admin || currentUser instanceof Company)) {
             throw new SecurityException("Only Admin or Company can toggle activation");
         }
 
         user.setActive(!user.isActive());
         userRepository.save(user);
+
+        return user;  // Return updated user
     }
 
 
@@ -247,6 +276,7 @@ public class UserService {
         }
         return stats;
     }
+
     private String generateBase64Password() {
         SecureRandom random = new SecureRandom();
         byte[] bytes = new byte[12]; // 12 bytes will produce 16-character Base64 string
@@ -260,8 +290,53 @@ public class UserService {
 
 
     private boolean canView(User currentUser, User targetUser) {
-        if (currentUser instanceof Admin) return true;
+        if (currentUser instanceof Admin || currentUser instanceof Company ) return true;
         return targetUser.getCreatedBy() != null && targetUser.getCreatedBy().getId().equals(currentUser.getId());
+    }
+    public User updateOwnProfile(User currentUser, UserProfileUpdateDTO dto) {
+        if (currentUser == null) {
+            throw new IllegalArgumentException("User not found");
+        }
+
+        // Validation des champs
+        if (dto.getEmail() != null) {
+            currentUser.setEmail(dto.getEmail());
+        }
+        if (dto.getPhone() != null) {
+            currentUser.setPhone(dto.getPhone());
+        }
+        if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
+            currentUser.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
+
+        // Traitement spécifique selon le type d'utilisateur
+        if (currentUser instanceof IndependentAccountant) {
+            updateIndependentAccountant((IndependentAccountant) currentUser, dto);
+        } else if (currentUser instanceof CompanyAccountant) {
+            updateCompanyAccountant((CompanyAccountant) currentUser, dto);
+        } else if (currentUser instanceof Company) {
+            updateCompany((Company) currentUser, dto);
+        }
+
+        return userRepository.save(currentUser);
+    }
+
+    private void updateIndependentAccountant(IndependentAccountant user, UserProfileUpdateDTO dto) {
+        if (dto.getFirstName() != null) user.setFirstName(dto.getFirstName());
+        if (dto.getLastName() != null) user.setLastName(dto.getLastName());
+        if (dto.getGender() != null) user.setGender(dto.getGender());
+        if (dto.getCin() != null) user.setCin(dto.getCin());
+    }
+
+    private void updateCompanyAccountant(CompanyAccountant user, UserProfileUpdateDTO dto) {
+        if (dto.getFirstName() != null) user.setFirstName(dto.getFirstName());
+        if (dto.getLastName() != null) user.setLastName(dto.getLastName());
+        if (dto.getGender() != null) user.setGender(dto.getGender());
+        if (dto.getCin() != null) user.setCin(dto.getCin());
+    }
+
+    private void updateCompany(Company user, UserProfileUpdateDTO dto) {
+        if (dto.getCompanyName() != null) user.setCompanyName(dto.getCompanyName());
     }
 
 }

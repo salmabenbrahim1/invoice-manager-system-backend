@@ -24,5 +24,14 @@ public class Invoice {
     private LocalDateTime addedAt;
 
     private String folderId;
-
+ // Ajout des données extraites de la facture
+ private String clientName;
+ private String siretNumber;
+ private String invoiceNumber;
+ private String invoiceDate;
+ private String tvaNumber;
+ private Double tva;
+ private Double ht;
+ private Double ttc;
+ private String currency;
 }

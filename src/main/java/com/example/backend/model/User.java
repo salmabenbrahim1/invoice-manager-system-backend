@@ -35,7 +35,7 @@ public  abstract class User implements UserDetails {
     private boolean isActive = true;
 
     @DBRef
-    @Field("created_by")
+    @Field("createdBy")
     private User createdBy;
 
 

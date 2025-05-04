@@ -24,14 +24,23 @@ public class FolderService {
 
     public List<Folder> getAllFolders() {
         List<Folder> folders = folderRepository.findAll();
+
         for (Folder folder : folders) {
+            // Retrieve and bind the client
             Client client = clientService.getClientById(folder.getClientId());
             if (client != null) {
                 folder.setClient(client);
             }
+
+            int count = folder.getInvoiceIds() != null ? folder.getInvoiceIds().size() : 0;
+            folder.setInvoiceCount(count);
+            // Save the folder with the new account
+            folderRepository.save(folder);
         }
+
         return folders;
     }
+
 
 
     public Folder getFolderById(String folderId) {
@@ -62,6 +71,7 @@ public class FolderService {
                 throw new RuntimeException("Client not found with ID: " + clientId);
             }
         }
+        folder.setInvoiceCount(0);
         return folderRepository.save(folder);
     }
 
@@ -78,20 +88,23 @@ public class FolderService {
             throw new IllegalArgumentException("Invoice ID cannot be null or empty");
         }
 
+        // Find the folder by its ID
         Folder folder = folderRepository.findById(folderId).orElse(null);
 
         if (folder == null) {
             throw new RuntimeException("Folder not found with ID: " + folderId);
         }
 
+        // Delete the invoice from the list of invoices in the file
         boolean removed = folder.getInvoiceIds().removeIf(id -> id.equals(invoiceId));
 
         if (removed) {
-            folderRepository.save(folder);
-        } else {
-            System.out.println("Invoice ID not found in folder");
+            folder.setInvoiceCount(folder.getInvoiceIds().size()); // updates the count
+            folderRepository.save(folder); // save with the new account
         }
+
     }
+
 
 
     public Folder updateFolder(String id, Folder updatedFolder) {

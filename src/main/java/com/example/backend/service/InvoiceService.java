@@ -14,6 +14,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class InvoiceService {
@@ -115,6 +117,29 @@ public class InvoiceService {
 
         return invoiceRepository.save(existingInvoice);
     }
+    // Méthode pour mettre à jour une facture existante avec les données extraites
+    public Invoice updateInvoiceWithExtractedData(String invoiceId, Invoice extractedData) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Invoice not found"));
 
+
+        // Met à jour les champs avec les données extraites
+        invoice.setClientName(extractedData.getClientName());
+        invoice.setSiretNumber(extractedData.getSiretNumber());
+        invoice.setInvoiceNumber(extractedData.getInvoiceNumber());
+        invoice.setInvoiceDate(extractedData.getInvoiceDate());
+        invoice.setTvaNumber(extractedData.getTvaNumber());
+        invoice.setTva(extractedData.getTva());
+        invoice.setHt(extractedData.getHt());
+        invoice.setTtc(extractedData.getTtc());
+        invoice.setCurrency(extractedData.getCurrency());
+        invoice.setStatus("extracted");
+
+        return invoiceRepository.save(invoice);
+    }
 
 }
+
+
+
+

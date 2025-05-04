@@ -3,6 +3,7 @@ package com.example.backend.controller;
 import com.example.backend.model.Invoice;
 import com.example.backend.service.InvoiceService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/folders")
@@ -75,4 +77,17 @@ public class InvoiceController {
         Invoice updated = invoiceService.updateInvoice(invoiceId, updatedInvoice);
         return ResponseEntity.ok(updated);
     }
+    // Endpoint pour mettre à jour la facture avec les données extraites
+    @PutMapping("/updateExtractedData/{invoiceId}")
+    public ResponseEntity<Invoice> updateInvoiceWithExtractedData(
+            @PathVariable String invoiceId,
+            @RequestBody Invoice extractedData) {
+        try {
+            Invoice updatedInvoice = invoiceService.updateInvoiceWithExtractedData(invoiceId, extractedData);
+            return ResponseEntity.ok(updatedInvoice);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
 }

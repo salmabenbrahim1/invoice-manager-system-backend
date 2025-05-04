@@ -29,12 +29,18 @@ public class AuthService {
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isPresent()) {
             User user = userOpt.get();
+            // Check if the user is active
+            if (!user.isActive()) {
+                throw new IllegalArgumentException("User is not active");
+            }
+            // Check if password matches
             if (passwordEncoder.matches(password, user.getPassword())) {
                 return Optional.of(user);
             }
         }
         return Optional.empty();
     }
+
 
     // Method for registration
     public User registerUser(String email, String password, String role) {
@@ -72,13 +78,18 @@ public class AuthService {
     private boolean isValidRole(String role) {
         return role.equalsIgnoreCase("ADMIN") ||
                 role.equalsIgnoreCase("COMPANY") ||
-                role.equalsIgnoreCase("INDEPENDENT ACCOUNTANT");
+                role.equalsIgnoreCase("INDEPENDENT ACCOUNTANT") ||
+                role.equalsIgnoreCase("INTERNAL ACCOUNTANT");
     }
 
 
-        // JWT token generation
+    // JWT token generation
     public String generateToken(User user) {
         return jwtUtils.generateToken(user);
+    }
+
+    public String generateRefreshToken(User user) {
+        return jwtUtils.generateRefreshToken(user);
     }
     // Validate JWT token
     public boolean validateToken(String token) {
