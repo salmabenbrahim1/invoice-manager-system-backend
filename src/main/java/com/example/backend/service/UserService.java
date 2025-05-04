@@ -1,109 +1,349 @@
 package com.example.backend.service;
 
-import com.example.backend.model.User;
+import com.example.backend.dto.UserCreateDTO;
+import com.example.backend.model.*;
+import com.example.backend.repository.InvoiceRepository;
 import com.example.backend.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.security.Principal;
+import java.security.SecureRandom;
 import java.util.*;
+import java.util.stream.Collectors;
+//
 
 @Service
+@RequiredArgsConstructor
 public class UserService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
-    @Autowired
-    private EmailService emailService;
+    private final InvoiceRepository invoiceRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;  //  PasswordEncoder
 
-    // Search user by email
-    public Optional<User> findByEmail(String email) {
-        return userRepository.findByEmail(email);
+    private <T extends User> T populateCommonFields(T user, UserCreateDTO dto, User creator) {
+        user.setEmail(dto.getEmail());
+        user.setPhone(dto.getPhone());
+        user.setCreatedBy(creator);
+        user.setActive(true);  // Ensure the user is active by default
+        return user;
     }
 
-    // Register a user with an encrypted password
-    public User saveUser(User user) {
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        return userRepository.save(user);
+    private void checkAdminPrivileges(User user) {
+        if (!(user instanceof Admin)) {
+            throw new SecurityException("Only Admin can perform this action");
+        }
     }
 
-    // Create a new user
-    public User createUser(User user) {
-        // Check if the email already exists
-        Optional<User> existingUser = userRepository.findByEmail(user.getEmail());
-        if (existingUser.isPresent()) {
-            throw new IllegalArgumentException("Email already exists");
+    private void checkCompanyPrivileges(User user) {
+        if (!(user instanceof Company)) {
+            throw new SecurityException("Only Company can perform this action");
+        }
+    }
+
+    public Map<String, Object> createUser(User currentUser, UserCreateDTO dto) {
+        if (currentUser == null) {
+            throw new IllegalArgumentException("Current user cannot be null");
         }
 
-        // Generate a random password and encrypt the password
-        String generatedPassword = UUID.randomUUID().toString().substring(0, 8);
-        user.setPassword(passwordEncoder.encode(generatedPassword));  // Crypter le mot de passe généré
+        User newUser;
+        String generatedPassword = generateBase64Password(); // for generating passwords
 
-        // Save the user to the database
-        User savedUser = userRepository.save(user);
+        switch (dto.getRole()) {
+            case "COMPANY":
+                checkAdminPrivileges(currentUser);
+                newUser = populateCommonFields(new Company(), dto, currentUser);
+                Company company = (Company) newUser;
+                company.setCompanyName(dto.getCompanyName());
+                break;
 
-        // Send the welcome email
-        String emailText = "Hello "  + ",\n\n" +
-                "Welcome to Invoice Management! Your account has been successfully created.\n\n" +
-                "Email: " + user.getEmail() + "\n" +
-                "Password: " + generatedPassword + "\n\n" +
-                "Please login to start managing your invoices efficiently. Don't forget to verify your account for full access.\n\n" +
-                "If you have any questions, feel free to contact our support team.\n\n" +
-                "Best regards,\n" +
-                "The Invoice Management Team";
-        emailService.sendEmail(user.getEmail(),  "Welcome to Invoice Management!", emailText);
+            case "INDEPENDENT_ACCOUNTANT":
+                checkAdminPrivileges(currentUser);
+                newUser = populateCommonFields(new IndependentAccountant(), dto, currentUser);
+                IndependentAccountant independent = (IndependentAccountant) newUser;
+                independent.setFirstName(dto.getFirstName());
+                independent.setLastName(dto.getLastName());
+                independent.setGender(dto.getGender());
+                independent.setCin(dto.getCin());
+                break;
 
-        return savedUser;
+            case "INTERNAL_ACCOUNTANT":
+                checkCompanyPrivileges(currentUser);
+                newUser = populateCommonFields(new CompanyAccountant(), dto, currentUser);
+                CompanyAccountant internal = (CompanyAccountant) newUser;
+                internal.setFirstName(dto.getFirstName());
+                internal.setLastName(dto.getLastName());
+                internal.setGender(dto.getGender());
+                internal.setCin(dto.getCin());
+                break;
+
+            default:
+                throw new IllegalArgumentException("Unsupported role: " + dto.getRole());
+        }
+
+        // Set the generated password
+        newUser.setPassword(passwordEncoder.encode(generatedPassword));
+
+        // Check the generated password being sent to the user
+        System.out.println("Generated password: " + generatedPassword);
+
+        // Save the created user
+        User savedUser = userRepository.save(newUser);
+
+        // Add the accountant ID to the company's list if applicable
+        if (savedUser instanceof CompanyAccountant && currentUser instanceof Company company) {
+            company.getAccountantIds().add(savedUser.getId());
+            userRepository.save(company);
+        }
+
+        // Sending email to the user
+        String subject = "Your Account Has Been Created Successfully";
+
+        // Creating an email body
+        String body;
+        if ("COMPANY".equals(savedUser.getRole())) {
+            body = String.format(
+                    "<html>" +
+                            "<body>" +
+                            "<p>Dear %s,</p>" +
+                            "<p>We are pleased to inform you that your account has been successfully created on Invox.</p>" +
+                            "<p>Below are your account credentials:</p>" +
+                            "<p><b>Username</b>: %s</p>" +
+                            "<p><b>Temporary Password</b>: %s</p>" +
+                            "<p>Please log in to the system and change your password as soon as possible for security reasons.</p>" +
+                            "To access your account, please visit the following link: http://localhost:3000/login <br><br>" +
+
+                            "<p>If you have any questions or need assistance, feel free to contact our support team.</p>" +
+                            "<p>Best regards,<br>Invox Team</p>" +
+                            "</body>" +
+                            "</html>",
+                    dto.getCompanyName(), dto.getEmail(), generatedPassword);
+        } else {
+            body = String.format(
+                    "<html>" +
+                            "<body>" +
+                            "<p>Dear %s,</p>" +
+                            "<p>We are pleased to inform you that your account has been successfully created on Invox.</p>" +
+                            "<p>Below are your account credentials:</p>" +
+                            "<p><b>Username</b>: %s</p>" +
+                            "<p><b>Temporary Password</b>: %s</p>" +
+                            "<p>Please log in to the system and change your password as soon as possible for security reasons.</p>" +
+                            "To access your account, please visit the following link: http://localhost:3000/login <br><br>" +
+
+                            "<p>If you have any questions or need assistance, feel free to contact our support team.</p>" +
+                            "<p>Best regards,<br>Invox Team</p>" +
+                            "</body>" +
+                            "</html>",
+                    dto.getFirstName(), dto.getEmail(), generatedPassword);
+        }
+
+        // Send the email
+        boolean emailSent = emailService.sendEmail(dto.getEmail(), subject, body);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("user", savedUser);
+        response.put("emailSent", emailSent);
+        response.put("subject",subject);
+        response.put("body",body);
+        return response;
+
+
     }
 
-    // Retrieve all users
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
-    }
-    // Update a user
-    public User updateUser(String id, User user) {
-        User existingUser = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        existingUser.setEmail(user.getEmail());
-        existingUser.setFirstName(user.getFirstName());
-        existingUser.setLastName(user.getLastName());
-        existingUser.setPhone(user.getPhone());
-        existingUser.setRole(user.getRole());
-        existingUser.setCompanyName(user.getCompanyName());
-        existingUser.setGender(user.getGender());
-        existingUser.setCin(user.getCin());
-        return userRepository.save(existingUser);
+
+    public List<?> getAllUsers(User currentUser) {
+        if (currentUser instanceof Admin) {
+            return userRepository.findByCreatedBy_Id(currentUser.getId());
+        }
+        if (currentUser instanceof Company) {
+            return userRepository.findByCreatedBy_Id(currentUser.getId());
+        }
+        return List.of(currentUser);
     }
 
-    // Delete a user
-    public void deleteUser(String id) {
+    public User getUserById(String id, User currentUser) {
+        User user = userRepository.findById(id).orElseThrow();
+        if (!canView(currentUser, user)) {
+            throw new SecurityException("Not authorized to view this user");
+        }
+        return user;
+    }
+
+    public boolean emailExists(String email) {
+        return userRepository.existsByEmailIgnoreCase(email);
+    }
+
+    public User updateUser(String id, User updated, User currentUser) {
+        // Input validation
+        if (updated == null) {
+            throw new IllegalArgumentException("Updated user cannot be null");
+        }
+
+        User existing = getUserById(id, currentUser);
+
+        // Authorization checks
+        if (!canManage(currentUser)) {
+            throw new SecurityException("Not authorized to update users");
+        }
+        if (!canView(currentUser, existing)) {
+            throw new SecurityException("Not authorized to update this user");
+        }
+
+        // Immutable properties check
+        if (!existing.getId().equals(updated.getId())) {
+            throw new IllegalArgumentException("Cannot change user ID");
+        }
+        if (!existing.getClass().equals(updated.getClass())) {
+            throw new IllegalArgumentException("Cannot change user role type");
+        }
+
+        // Update common fields
+        updateCommonFields(existing, updated);
+
+        // Role-specific updates
+        updateRoleSpecificFields(existing, updated);
+
+        return userRepository.save(existing);
+    }
+
+    private void updateCommonFields(User existing, User updated) {
+        existing.setEmail(updated.getEmail());
+        existing.setPhone(updated.getPhone());
+        existing.setActive(updated.isActive());
+    }
+
+    private void updateRoleSpecificFields(User existing, User updated) {
+        switch (existing.getClass().getSimpleName()) {
+            case "IndependentAccountant":
+                IndependentAccountant accountant = (IndependentAccountant) existing;
+                IndependentAccountant updatedAccountant = (IndependentAccountant) updated;
+                accountant.setFirstName(updatedAccountant.getFirstName());
+                accountant.setLastName(updatedAccountant.getLastName());
+                accountant.setGender(updatedAccountant.getGender());
+                accountant.setCin(updatedAccountant.getCin());
+                break;
+
+            case "CompanyAccountant":
+                CompanyAccountant companyAccountant = (CompanyAccountant) existing;
+                CompanyAccountant updatedCompanyAccountant = (CompanyAccountant) updated;
+                companyAccountant.setFirstName(updatedCompanyAccountant.getFirstName());
+                companyAccountant.setLastName(updatedCompanyAccountant.getLastName());
+                companyAccountant.setGender(updatedCompanyAccountant.getGender());
+                companyAccountant.setCin(updatedCompanyAccountant.getCin());
+                break;
+
+            case "Company":
+                Company company = (Company) existing;
+                Company updatedCompany = (Company) updated;
+                company.setCompanyName(updatedCompany.getCompanyName());
+                break;
+
+            default:
+                throw new IllegalArgumentException("Unsupported user type: " + existing.getClass().getSimpleName());
+        }
+    }
+
+    public void deleteUser(String id, User currentUser) {
+        User existing = getUserById(id, currentUser);
+        if (!canManage(currentUser)) {
+            throw new SecurityException("Not authorized to delete this user");
+        }
+        if (!canView(currentUser, existing)) {
+            throw new SecurityException("Not authorized to update/delete this user");
+        }
         userRepository.deleteById(id);
     }
 
-    // Get dashboard stats
-    public Map<String, Long> getDashboardStats() {
-        List<User> users = userRepository.findAll();
+    public User toggleUserActivation(String id, User currentUser) {
+        User user = getUserById(id, currentUser);
+        if (!canView(currentUser, user)) {
+            throw new SecurityException("Not authorized to modify this user");
+        }
+        if (!(currentUser instanceof Admin || currentUser instanceof Company)) {
+            throw new SecurityException("Only Admin or Company can toggle activation");
+        }
 
-        // Count the number of 'COMPANY' users
-        long totalCompanies = users.stream()
-                .filter(user -> "COMPANY".equals(user.getRole()))
-                .count();
+        user.setActive(!user.isActive());
+        userRepository.save(user);
 
-        // Count the number of 'INDEPENDENT ACCOUNTANT' users
-        long totalAccountIndependents = users.stream()
-                .filter(user -> "INDEPENDENT ACCOUNTANT".equals(user.getRole()))
-                .count();
+        return user;  // Return updated user
+    }
 
-        // Return stats in a map
+
+    public User getUserByEmail(String email) {
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        System.out.println("Fetched user: " + user);
+        return user;
+    }
+
+
+    public Map<String, Long> getUserStats(User currentUser) {
         Map<String, Long> stats = new HashMap<>();
-        stats.put("totalCompanies", totalCompanies);
-        stats.put("totalAccountIndependents", totalAccountIndependents);
+        if (currentUser instanceof Admin) {
+            // Get all non-admin users
+            List<User> nonAdminUsers = userRepository.findAll().stream()
+                    .filter(u -> !(u instanceof Admin))
+                    .collect(Collectors.toList());
 
+            // User statistics (excluding admin)
+            long activeUsers = nonAdminUsers.stream().filter(User::isActive).count();
+            long inactiveUsers = nonAdminUsers.size() - activeUsers;
+
+            stats.put("totalCompanies", nonAdminUsers.stream()
+                    .filter(u -> u instanceof Company)
+                    .count());
+
+            stats.put("totalIndependentAccountants", nonAdminUsers.stream()
+                    .filter(u -> u instanceof IndependentAccountant)
+                    .count());
+
+            stats.put("activeUsers", activeUsers);
+            stats.put("inactiveUsers", inactiveUsers);
+
+            // Invoice statistics (unchanged)
+            Long totalInvoices = invoiceRepository.count();
+            stats.put("totalInvoicesExtracted", totalInvoices != null ? totalInvoices : 0L);
+
+            // Invoices count by user type (unchanged)
+            Long companyInvoices = invoiceRepository.countByUserRole("COMPANY");
+            Long accountantInvoices = invoiceRepository.countByUserRole("INDEPENDENT_ACCOUNTANT");
+            stats.put("companyInvoices", companyInvoices != null ? companyInvoices : 0L);
+            stats.put("accountantInvoices", accountantInvoices != null ? accountantInvoices : 0L);
+        }
         return stats;
     }
+
+    private String generateBase64Password() {
+        SecureRandom random = new SecureRandom();
+        byte[] bytes = new byte[12]; // 12 bytes will produce 16-character Base64 string
+        random.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private boolean canManage(User currentUser) {
+        return currentUser instanceof Admin || currentUser instanceof Company;
+    }
+
+
+    private boolean canView(User currentUser, User targetUser) {
+        if (currentUser instanceof Admin || currentUser instanceof Company ) return true;
+        return targetUser.getCreatedBy() != null && targetUser.getCreatedBy().getId().equals(currentUser.getId());
+    }
+
+
+    public User getCurrentUser(Principal principal) {
+        if (principal == null) {
+            throw new SecurityException("No user is currently authenticated");
+        }
+
+        String email = principal.getName();  // Assuming the principal contains the email as the username
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found: " + email));
+    }
+
 
 }

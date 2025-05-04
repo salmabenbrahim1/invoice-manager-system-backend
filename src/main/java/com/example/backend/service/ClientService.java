@@ -1,76 +1,105 @@
 package com.example.backend.service;
-
-import com.example.backend.model.Client;
+//
+import com.example.backend.model.*;
 import com.example.backend.repository.ClientRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.backend.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
-
+@RequiredArgsConstructor
 public class ClientService {
 
-    @Autowired
-    private ClientRepository clientRepository;
+    private final ClientRepository clientRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
-    //fetch the list of clients from DB
-    public List<Client> getAllClients(){
-        return clientRepository.findAll();
-    }
-    //get a client by his id
-    public Client getClientById(String id){
-        if (id == null || id.isEmpty()) {
-            throw new IllegalArgumentException("Client ID cannot be null or empty");
+    public Client createClient(User creator, String name, String email, String phone, String assignedAccountantId) {
+        if (!(creator instanceof IndependentAccountant || creator instanceof Company)) {
+            throw new SecurityException("Unauthorized to create clients");
         }
-        return clientRepository.findById(id).orElse(null);
+
+        //client details:
+        String generatedPassword = UUID.randomUUID().toString().substring(0, 8);
+        Client client = new Client();
+        client.setName(name);
+        client.setEmail(email);
+        client.setPhone(phone);
+        client.setPassword(passwordEncoder.encode(generatedPassword));
+        client.setCreatedBy(creator);
+
+        // Assign to internal accountant (only for companies)
+        if (creator instanceof Company && assignedAccountantId != null) {
+            CompanyAccountant accountant = (CompanyAccountant) userRepository.findById(assignedAccountantId).orElseThrow();
+            client.setAssignedTo(accountant);
+        }
+
+        Client savedClient = clientRepository.save(client);
+
+        // Send email to the new client
+        String subject = "Welcome to Invox - Your Client Account";
+        String body = String.format("""
+                <html><body>
+                <p>Dear %s,</p>
+                <p>Your client account has been created.</p>
+                <p><b>Email:</b> %s<br><b>Temporary Password:</b> %s</p>
+                <p>Please login and update your password: <a href="http://localhost:3000/login">Login</a></p>
+                </body></html>
+                """, name, email, generatedPassword);
+        emailService.sendEmail(email, subject, body);
+
+        return savedClient;
     }
 
-    //add a client to db
-    public Client addClient(Client client) {
-        if (client == null) {
-            throw new IllegalArgumentException("Client cannot be null");
+    public List<Client> getClientsCreatedBy(User user) {
+        return clientRepository.findByCreatedBy_Id(user.getId());
+    }
+
+
+
+    public Client updateClient(User updater, String clientId, String name, String email, String phone, String assignedAccountantId) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new IllegalArgumentException("Client not found"));
+
+        // Ensure only the creator can update the client
+        if (!client.getCreatedBy().getId().equals(updater.getId())) {
+            throw new SecurityException("Unauthorized to update this client");
         }
-        if (client.getName() == null || client.getName().trim().isEmpty()) {
-            throw new IllegalArgumentException("Client name cannot be empty");
-        }
-        if (client.getEmail() == null || client.getEmail().trim().isEmpty()) {
-            throw new IllegalArgumentException("Client email cannot be empty");
-        }
-        if (client.getPhoneNumber() == null || client.getPhoneNumber().trim().isEmpty()) {
-            throw new IllegalArgumentException("Client phone number cannot be empty");
+
+        client.setName(name);
+        client.setEmail(email);
+        client.setPhone(phone);
+
+        // Reassign accountant (only for companies)
+        if (updater instanceof Company && assignedAccountantId != null) {
+            CompanyAccountant accountant = (CompanyAccountant) userRepository.findById(assignedAccountantId)
+                    .orElseThrow(() -> new IllegalArgumentException("Accountant not found"));
+            client.setAssignedTo(accountant);
         }
 
         return clientRepository.save(client);
     }
 
-    //delete a client
-    public void deleteClient(String id) {
-        if (id == null || id.isEmpty()) {
-            throw new IllegalArgumentException("Client ID cannot be null or empty");
-        }
-        if (!clientRepository.existsById(id)) {
-            throw new RuntimeException("Client not found with ID: " + id);
-        }
-        clientRepository.deleteById(id);
-    }
-    public Client updateClient(String id, Client updatedClient) {
-        if (id == null || id.isEmpty()) {
-            throw new IllegalArgumentException("Client ID cannot be null or empty");
-        }
-        if (!clientRepository.existsById(id)) {
-            throw new RuntimeException("Client not found with ID: " + id);
+    public void deleteClient(User deleter, String clientId) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new IllegalArgumentException("Client not found"));
+
+        // Only the creator can delete the client
+        if (!client.getCreatedBy().getId().equals(deleter.getId())) {
+            throw new SecurityException("Unauthorized to delete this client");
         }
 
-        return clientRepository.findById(id).map(client -> {
-            client.setName(updatedClient.getName());
-            client.setEmail(updatedClient.getEmail());
-            client.setPhoneNumber(updatedClient.getPhoneNumber());
-            return clientRepository.save(client);
-        }).orElseThrow(() -> new RuntimeException("Failed to update client with ID: " + id));
+        clientRepository.delete(client);
     }
 
-
-
+    // Retrieve client by ID
+    public Client getClientById(String clientId) {
+        return clientRepository.findById(clientId).orElse(null);
+    }
 
 }
