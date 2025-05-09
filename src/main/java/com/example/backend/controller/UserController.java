@@ -1,5 +1,6 @@
 package com.example.backend.controller;
 //
+import com.example.backend.model.CompanyAccountant;
 import com.example.backend.model.User;
 import com.example.backend.security.JwtUtils;
 import com.example.backend.dto.UserCreateDTO;
@@ -10,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -192,5 +194,8 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(false);
         }
     }
+
+
+
 
 }

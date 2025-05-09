@@ -91,6 +91,16 @@ public class InvoiceController {
         Invoice updatedInvoice = invoiceService.updateInvoice(invoiceId, dto, file);
         return ResponseEntity.ok(updatedInvoice);
     }
+
+    @PutMapping("/extracted/{invoiceId}")
+    public ResponseEntity<Invoice> updateExtractedData(
+            @PathVariable String invoiceId,
+            @RequestBody InvoiceCreateDTO extractedData) {
+
+        Invoice updatedInvoice = invoiceService.updateExtractedData(invoiceId, extractedData);
+        return ResponseEntity.ok(updatedInvoice);
+    }
+
 }
 
 

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,10 +35,16 @@ public class ClientService {
         client.setCreatedBy(creator);
 
         // Assign to internal accountant (only for companies)
-        if (creator instanceof Company && assignedAccountantId != null) {
+        /*if (creator instanceof Company && assignedAccountantId != null) {
             CompanyAccountant accountant = (CompanyAccountant) userRepository.findById(assignedAccountantId).orElseThrow();
             client.setAssignedTo(accountant);
-        }
+
+            // Add to accountant's client list
+            accountant.getClientIds().add(client.getId());
+            userRepository.save(accountant);
+
+
+        }*/
 
         Client savedClient = clientRepository.save(client);
 
@@ -55,6 +62,37 @@ public class ClientService {
 
         return savedClient;
     }
+
+
+
+
+    // Assign Accountant to an existing client
+    public Client assignAccountantToClient(User updater, String clientId, String assignedAccountantId) {
+        if (!(updater instanceof Company)) {
+            throw new SecurityException("Only companies can assign accountants to clients.");
+        }
+
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new IllegalArgumentException("Client not found"));
+
+        // Ensure the client was created by the company
+        if (!client.getCreatedBy().getId().equals(updater.getId())) {
+            throw new SecurityException("Unauthorized to assign an accountant to this client");
+        }
+
+        CompanyAccountant accountant = (CompanyAccountant) userRepository.findById(assignedAccountantId)
+                .orElseThrow(() -> new IllegalArgumentException("Accountant not found"));
+
+        // Assign accountant to client
+        client.setAssignedTo(accountant);
+
+        // Add the client to the accountant's list
+        accountant.getClientIds().add(client.getId());
+        userRepository.save(accountant);
+
+        return clientRepository.save(client);
+    }
+
 
     public List<Client> getClientsCreatedBy(User user) {
         return clientRepository.findByCreatedBy_Id(user.getId());
@@ -77,9 +115,18 @@ public class ClientService {
 
         // Reassign accountant (only for companies)
         if (updater instanceof Company && assignedAccountantId != null) {
-            CompanyAccountant accountant = (CompanyAccountant) userRepository.findById(assignedAccountantId)
+            // Remove client from previous accountant if changed
+            if (client.getAssignedTo() != null && !client.getAssignedTo().getId().equals(assignedAccountantId)) {
+                CompanyAccountant oldAccountant = (CompanyAccountant) client.getAssignedTo();
+                oldAccountant.removeClientId(client.getId());
+                userRepository.save(oldAccountant);
+            }
+
+            CompanyAccountant newAccountant = (CompanyAccountant) userRepository.findById(assignedAccountantId)
                     .orElseThrow(() -> new IllegalArgumentException("Accountant not found"));
-            client.setAssignedTo(accountant);
+            client.setAssignedTo(newAccountant);
+            newAccountant.addClientId(client.getId());
+
         }
 
         return clientRepository.save(client);
@@ -93,6 +140,13 @@ public class ClientService {
         if (!client.getCreatedBy().getId().equals(deleter.getId())) {
             throw new SecurityException("Unauthorized to delete this client");
         }
+
+        if (client.getAssignedTo() != null) {
+            CompanyAccountant accountant = client.getAssignedTo();
+            accountant.removeClientId(client.getId());
+            userRepository.save(accountant);
+        }
+
 
         clientRepository.delete(client);
     }

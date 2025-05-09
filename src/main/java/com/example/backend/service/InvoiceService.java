@@ -17,7 +17,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 
-//
+
 @Service
 public class InvoiceService {
 
@@ -26,6 +26,7 @@ public class InvoiceService {
 
     @Autowired
     private FolderRepository folderRepository;
+
     @Autowired
     private FolderService folderService;
 
@@ -46,7 +47,7 @@ public class InvoiceService {
     }
 
 
-    // saving the uploaded file
+    // Save the uploaded file
     public String saveFile(MultipartFile file) throws IOException {
         String uploadDir = "uploads/invoices";
         File directory = new File(uploadDir);
@@ -68,7 +69,7 @@ public class InvoiceService {
     }
 
 
-
+    // 
     public Invoice saveInvoice(MultipartFile file, InvoiceCreateDTO dto) throws IOException {
         // 1. Save the image file
         String savedImagePath = saveFile(file);
@@ -96,6 +97,38 @@ public class InvoiceService {
         return savedInvoice;
     }
 
+    //
+    public Invoice updateExtractedData(String invoiceId, InvoiceCreateDTO extractedData) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Invoice not found with ID: " + invoiceId));
+
+        invoice.setInvoiceNumber(extractedData.getInvoiceNumber());
+        invoice.setInvoiceDate(extractedData.getInvoiceDate());
+        invoice.setDueDate(extractedData.getDueDate());
+        invoice.setCurrency(extractedData.getCurrency());
+
+
+        invoice.setSellerName(extractedData.getSellerName());
+        invoice.setSellerAddress(extractedData.getSellerAddress());
+        invoice.setSellerPhone(extractedData.getSellerPhone());
+        invoice.setSellerSiretNumber(extractedData.getSellerSiretNumber());
+
+        invoice.setCustomerName(extractedData.getCustomerName());
+        invoice.setCustomerAddress(extractedData.getCustomerAddress());
+        invoice.setCustomerPhone(extractedData.getCustomerPhone());
+
+        invoice.setTvaNumber(extractedData.getTvaNumber());
+        invoice.setTvaRate(extractedData.getTvaRate());
+        invoice.setTva(extractedData.getTva());
+        invoice.setHt(extractedData.getHt());
+        invoice.setTtc(extractedData.getTtc());
+        invoice.setDiscount(extractedData.getDiscount());
+
+
+
+
+        return invoiceRepository.save(invoice);
+    }
 
     // Delete invoice method
     public void deleteInvoice(String invoiceId) {
@@ -111,12 +144,12 @@ public class InvoiceService {
         Folder folder = folderRepository.findById(invoice.getFolderId())
                 .orElseThrow(() -> new RuntimeException("Folder not found with ID: " + invoice.getFolderId()));
 
-        folder.getInvoiceIds().remove(invoiceId);  // Remove the invoice ID from the folder's invoice list
+        folder.getInvoiceIds().remove(invoice.getId());  // Remove the invoice ID from the folder's invoice list
         folderRepository.save(folder);  // Save updated folder
 
 
         // Delete the invoice
-        invoiceRepository.delete(invoice);  // Delete the invoice
+        invoiceRepository.delete(invoice);
         updateInvoiceCount(folder.getId());
 
     }
@@ -145,6 +178,9 @@ public class InvoiceService {
         // Save and return the updated invoice
         return invoiceRepository.save(invoice);
     }
+
+
+    //
     public void updateInvoiceCount(String folderId) {
         Folder folder = folderRepository.findById(folderId)
                 .orElseThrow(() -> new RuntimeException("Folder not found with ID: " + folderId));

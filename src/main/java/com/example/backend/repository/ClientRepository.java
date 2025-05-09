@@ -14,7 +14,16 @@ import java.util.Optional;
 @Repository
 public interface ClientRepository extends MongoRepository<Client, String> {
     List<Client> findByCreatedBy_Id(String id);
+
     Optional<Client> findById(String id);
+
+    // Query by the assignedToId field (direct string match)
+    List<Client> findByAssignedToId(String accountantId);
+
+    // Alternative query using @DBRef
+    @Query("{ 'assignedTo.$id': ?0 }")
+    List<Client> findByAssignedTo_Id(ObjectId accountantId);
+
 
 
 
