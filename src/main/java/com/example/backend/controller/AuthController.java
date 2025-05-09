@@ -42,6 +42,8 @@ public class AuthController {
 
         User user = userOpt.get();
 
+
+
         AuthResponseDTO response = new AuthResponseDTO();
         response.setToken(authService.generateToken(user));
         response.setRefreshToken(authService.generateRefreshToken(user));
@@ -152,4 +154,5 @@ public class AuthController {
         });
         return ResponseEntity.badRequest().body(errors);
     }
+
 }

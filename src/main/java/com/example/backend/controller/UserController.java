@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -136,15 +137,16 @@ public class UserController {
         try {
             User currentUser = getCurrentUser(request);
             User updatedUser = userService.toggleUserActivation(id, currentUser);
-
-            // Return the updated user to the frontend
             return ResponseEntity.ok(updatedUser);
         } catch (SecurityException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Collections.singletonMap("message", "Access denied."));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Could not toggle activation status.");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Collections.singletonMap("message", "Could not toggle activation status."));
         }
     }
+
 
     @GetMapping("/dashboard")
     public ResponseEntity<?> getUserStats(HttpServletRequest request) {
@@ -153,7 +155,7 @@ public class UserController {
             User currentUser = getCurrentUser(request);
 
             // Get statistics from service
-            Map<String, Long> stats = userService.getUserStats(currentUser);
+            Map<String, Object> stats = userService.getUserStats(currentUser);
 
             // Return the statistics
             return ResponseEntity.ok(stats);
@@ -163,6 +165,7 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("Authentication error: " + e.getMessage());
         }
+
 
 
     }

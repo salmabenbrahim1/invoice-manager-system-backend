@@ -2,14 +2,19 @@ package com.example.backend.service;
 
 import com.example.backend.dto.UserCreateDTO;
 import com.example.backend.model.*;
+import com.example.backend.repository.ClientRepository;
+import com.example.backend.repository.FolderRepository;
 import com.example.backend.repository.InvoiceRepository;
 import com.example.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
 import java.security.SecureRandom;
+import java.time.Month;
+import java.time.format.TextStyle;
 import java.util.*;
 import java.util.stream.Collectors;
 //
@@ -21,6 +26,9 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final ClientRepository clientRepository;
+    private final FolderRepository folderRepository;
+
 
     private final InvoiceRepository invoiceRepository;
 
@@ -154,7 +162,6 @@ public class UserService {
 
     }
 
-
     public List<?> getAllUsers(User currentUser) {
         if (currentUser instanceof Admin) {
             return userRepository.findByCreatedBy_Id(currentUser.getId());
@@ -273,16 +280,15 @@ public class UserService {
         return user;  // Return updated user
     }
 
-
     public User getUserByEmail(String email) {
         User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
         System.out.println("Fetched user: " + user);
         return user;
     }
 
+    public Map<String, Object> getUserStats(User currentUser) {
+        Map<String, Object> stats = new HashMap<>();
 
-    public Map<String, Long> getUserStats(User currentUser) {
-        Map<String, Long> stats = new HashMap<>();
         if (currentUser instanceof Admin) {
             // Get all non-admin users
             List<User> nonAdminUsers = userRepository.findAll().stream()
@@ -314,10 +320,76 @@ public class UserService {
             stats.put("companyInvoices", companyInvoices != null ? companyInvoices : 0L);
             stats.put("accountantInvoices", accountantInvoices != null ? accountantInvoices : 0L);
         }
+
+        else if (currentUser instanceof IndependentAccountant) {
+            IndependentAccountant accountant = (IndependentAccountant) currentUser;
+
+            long totalClients = clientRepository.findByCreatedBy_Id(accountant.getId()).size();
+            long totalFolders = folderRepository.findByCreatedById(accountant.getId()).size();
+
+            List<Folder> folders = folderRepository.findByCreatedById(accountant.getId());
+            long totalInvoices = folders.stream()
+                    .mapToLong(Folder::getInvoiceCount)
+                    .sum();
+            // Pending invoices for the accountant
+            long pendingInvoices = folders.stream()
+                    .mapToLong(folder -> folder.getInvoiceIds().stream()
+                            .map(invoiceId -> {
+                                // Retrieve the invoice object from its ID
+                                Invoice invoice = invoiceRepository.findById(invoiceId).orElse(null);
+                                return invoice != null && "pending".equals(invoice.getStatus()) ? 1 : 0;
+                            })
+                            .filter(count -> count == 1) // Filter pending invoices
+                            .count())
+                    .sum();
+
+            long validatedInvoices = folders.stream()
+                    .mapToLong(folder -> folder.getInvoiceIds().stream()
+                            .map(invoiceId -> {
+                                Invoice invoice = invoiceRepository.findById(invoiceId).orElse(null);
+                                return invoice != null && "validated".equals(invoice.getStatus()) ? 1 : 0;
+                            })
+                            .filter(count -> count == 1)
+                            .count())
+                    .sum();
+            Map<String, Long> invoicesByMonth = new LinkedHashMap<>();
+            for (Month month : Month.values()) {
+                String monthName = month.getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+                invoicesByMonth.put(monthName, 0L);
+            }
+
+            for (Folder folder : folders) {
+                for (String invoiceId : folder.getInvoiceIds()) {
+                    Invoice invoice = invoiceRepository.findById(invoiceId).orElse(null);
+                    if (invoice != null && invoice.getAddedAt() != null) {
+                        String month = invoice.getAddedAt().getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+                        invoicesByMonth.put(month, invoicesByMonth.get(month) + 1);
+                    }
+                }
+            }
+
+            List<Map<String, Object>> invoiceData = invoicesByMonth.entrySet().stream()
+                    .map(entry -> {
+                        Map<String, Object> point = new HashMap<>();
+                        point.put("name", entry.getKey());
+                        point.put("invoices", entry.getValue());
+                        return point;
+                    })
+                    .collect(Collectors.toList());
+            stats.put("totalClients", totalClients);
+            stats.put("totalFolders", totalFolders);
+            stats.put("totalInvoices", totalInvoices);
+            stats.put("validatedInvoices", validatedInvoices);
+            stats.put("invoiceData", invoiceData);
+
+
+        }
+
         return stats;
+
     }
 
-    private String generateBase64Password() {
+    public String generateBase64Password() {
         SecureRandom random = new SecureRandom();
         byte[] bytes = new byte[12]; // 12 bytes will produce 16-character Base64 string
         random.nextBytes(bytes);

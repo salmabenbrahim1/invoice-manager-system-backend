@@ -21,6 +21,7 @@ public interface InvoiceRepository extends MongoRepository<Invoice,String> {
     @Query(value = "{'user.role': ?0}", count = true)
     long countByUserRole(String role);
 
+    long countByStatus(String status);
 
 }
 
