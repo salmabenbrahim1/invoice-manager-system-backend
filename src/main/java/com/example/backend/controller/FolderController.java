@@ -99,6 +99,7 @@ public class FolderController {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
     }
+
     // Update a folder
     @PutMapping("/{folderId}")
     public ResponseEntity<Folder> updateFolder(@PathVariable String folderId, @RequestBody Folder updatedFolder) {

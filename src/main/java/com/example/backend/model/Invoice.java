@@ -25,4 +25,26 @@ public class Invoice {
 
     private String folderId;
 
+   private String invoiceNumber;
+   private String invoiceDate;
+   private String dueDate;
+   private String currency;
+
+   private String sellerName;
+   private String sellerAddress;
+   private String sellerPhone;
+   private String sellerSiretNumber;
+
+
+   private String customerName;
+   private String customerAddress;
+   private String customerPhone;
+
+   private String tvaNumber;
+   private String tvaRate;
+   private Double tva;
+   private Double ht;
+   private Double ttc;
+   private Double discount;
+
 }

@@ -35,6 +35,7 @@ public class FolderService {
         }
         return folders;
     }
+
     public Folder updateFolder(String folderId, Folder updatedFolder) {
         Optional<Folder> existingFolderOpt = folderRepository.findById(folderId);
         if (existingFolderOpt.isEmpty()) {
@@ -48,6 +49,7 @@ public class FolderService {
 
 
     }
+
     public void deleteFolder(String folderId) {
         if (!folderRepository.existsById(folderId)) {
             throw new RuntimeException("Folder not found with id: " + folderId);

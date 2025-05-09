@@ -417,5 +417,17 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("User not found: " + email));
     }
 
+    public List<CompanyAccountant> getCompanyAccountants(User currentUser) {
+        if (!(currentUser instanceof Company)) {
+            throw new SecurityException("Only a Company can access its internal accountants.");
+        }
+
+        return userRepository.findByCreatedBy_Id(currentUser.getId()).stream()
+                .filter(user -> user instanceof CompanyAccountant)
+                .map(user -> (CompanyAccountant) user)
+                .collect(Collectors.toList());
+    }
+
+
 
 }

@@ -16,6 +16,8 @@ public class CompanyAccountant extends User {
     private String gender;
     private String cin;
     private List<String> folderIds = new ArrayList<>();
+    private List<String> clientIds = new ArrayList<>();
+
 
     public CompanyAccountant() {
         this.setRole("INTERNAL_ACCOUNTANT");
@@ -25,4 +27,15 @@ public class CompanyAccountant extends User {
     public void addFolderId(String folderId) {
         this.folderIds.add(folderId);
     }
+
+    public void addClientId(String clientId) {
+        if (!clientIds.contains(clientId)) {
+            this.clientIds.add(clientId);
+        }
+    }
+
+    public void removeClientId(String clientId) {
+        this.clientIds.remove(clientId);
+    }
+
 }
