@@ -100,6 +100,7 @@ public class InvoiceController {
         Invoice updatedInvoice = invoiceService.updateExtractedData(invoiceId, extractedData);
         return ResponseEntity.ok(updatedInvoice);
     }
+    
 
 }
 
