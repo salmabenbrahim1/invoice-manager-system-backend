@@ -4,7 +4,7 @@ package com.example.backend.dto;
 import lombok.Data;
 //
 @Data
-public class UserCreateDTO {
+public class UserDTO {
     private String email;
     private String phone;
     private String role;

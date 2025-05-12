@@ -8,12 +8,12 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ClientCreateDTO {
+public class ClientDTO {
     private String name;
     private String email;
     private String phone;
 
-    private String assignedAccountantId; // optional
+    private String assignedAccountantId;
 
 
 }

@@ -26,6 +26,6 @@ public class Client {
     private User createdBy; // IndependentAccountant or Company
 
     @DBRef
-    private CompanyAccountant assignedTo; // only if assignedzzz
+    private CompanyAccountant assignedTo; // only if assigned
 
 }

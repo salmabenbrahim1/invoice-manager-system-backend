@@ -1,6 +1,6 @@
 package com.example.backend.controller;
 //
-import com.example.backend.dto.FolderCreateDTO;
+import com.example.backend.dto.FolderDTO;
 import com.example.backend.model.*;
 import com.example.backend.service.ClientService;
 import com.example.backend.service.FolderService;
@@ -25,25 +25,25 @@ public class FolderController {
     // Create a new folder, and add existing or new client
 
     @PostMapping
-    public ResponseEntity<Folder> createFolder(@RequestBody FolderCreateDTO folderCreateDTO, Principal principal) {
+    public ResponseEntity<Folder> createFolder(@RequestBody FolderDTO folderDto, Principal principal) {
         try {
             // Get the authenticated user (creator - accountant or company)
             User creator = userService.getCurrentUser(principal);
 
             // Check if the client exists or create a new client
             Client client;
-            if (folderCreateDTO.getClientId() != null && !folderCreateDTO.getClientId().isEmpty()) {
+            if (folderDto.getClientId() != null && !folderDto.getClientId().isEmpty()) {
                 // If clientId is provided, fetch the existing client
-                client = clientService.getClientById(folderCreateDTO.getClientId());
+                client = clientService.getClientById(folderDto.getClientId());
                 if (client == null) {
                     // If client not found, return an error
                     return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
                 }
             } else {
                 // If clientId is not provided, create a new client
-                client = clientService.createClient(creator, folderCreateDTO.getClientName(),
-                        folderCreateDTO.getClientEmail(), folderCreateDTO.getClientPhone(),
-                        folderCreateDTO.getAssignedAccountantId());
+                client = clientService.createClient(creator, folderDto.getClientName(),
+                        folderDto.getClientEmail(), folderDto.getClientPhone(),
+                        folderDto.getAssignedAccountantId());
             }
 
             // Determine the creator's role
@@ -58,11 +58,11 @@ public class FolderController {
 
             // Create the folder linked to the client and authenticated user
             Folder folder = new Folder(
-                    folderCreateDTO.getFolderName(),
-                    folderCreateDTO.getDescription(),
+                    folderDto.getFolderName(),
+                    folderDto.getDescription(),
                     client.getId(), // Use client ID (existing or newly created)
                     creator.getId(),
-                    creatorRole // Pass the Role directly
+                    creatorRole
             );
 
             // Create the folder

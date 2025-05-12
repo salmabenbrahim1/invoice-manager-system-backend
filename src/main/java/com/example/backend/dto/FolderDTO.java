@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class FolderCreateDTO {
+public class FolderDTO {
 //
     private String folderName;
     private String description;
