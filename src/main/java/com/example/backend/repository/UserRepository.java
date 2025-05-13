@@ -1,8 +1,5 @@
 package com.example.backend.repository;
 //
-import com.example.backend.model.Admin;
-import com.example.backend.model.Company;
-import com.example.backend.model.IndependentAccountant;
 import com.example.backend.model.User;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
@@ -16,6 +13,6 @@ public interface UserRepository extends MongoRepository<User, String> {
     // Add this new method
     @Query(value = "{ 'email' : { $regex : ?0, $options: 'i' } }", exists = true)
     boolean existsByEmailIgnoreCase(String email);
-
+    long countByRoleAndIdIn(String role, List<String> companyAccountantIds);
 
 }

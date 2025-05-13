@@ -22,6 +22,8 @@ public interface InvoiceRepository extends MongoRepository<Invoice,String> {
     long countByUserRole(String role);
 
     long countByStatus(String status);
+    long countByFolderId(String folderId);  // Ajouté ici pour compter par folderId
+
 
 }
 
