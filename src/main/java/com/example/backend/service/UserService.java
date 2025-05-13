@@ -329,46 +329,45 @@ public class UserService {
             long totalFolders = folderRepository.findByCreatedById(accountant.getId()).size();
 
             List<Folder> folders = folderRepository.findByCreatedById(accountant.getId());
+
             long totalInvoices = folders.stream()
                     .mapToLong(Folder::getInvoiceCount)
                     .sum();
-            // Pending invoices for the accountant
-            long pendingInvoices = folders.stream()
-                    .mapToLong(folder -> folder.getInvoiceIds().stream()
-                            .map(invoiceId -> {
-                                // Retrieve the invoice object from its ID
-                                Invoice invoice = invoiceRepository.findById(invoiceId).orElse(null);
-                                return invoice != null && "pending".equals(invoice.getStatus()) ? 1 : 0;
-                            })
-                            .filter(count -> count == 1) // Filter pending invoices
-                            .count())
-                    .sum();
 
-            long validatedInvoices = folders.stream()
-                    .mapToLong(folder -> folder.getInvoiceIds().stream()
-                            .map(invoiceId -> {
-                                Invoice invoice = invoiceRepository.findById(invoiceId).orElse(null);
-                                return invoice != null && "validated".equals(invoice.getStatus()) ? 1 : 0;
-                            })
-                            .filter(count -> count == 1)
-                            .count())
-                    .sum();
+            // Initialisation des maps pour les graphiques
             Map<String, Long> invoicesByMonth = new LinkedHashMap<>();
+            Map<String, Long> validatedByMonth = new LinkedHashMap<>();
+
             for (Month month : Month.values()) {
                 String monthName = month.getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
                 invoicesByMonth.put(monthName, 0L);
+                validatedByMonth.put(monthName, 0L);
             }
+
+            long pendingInvoices = 0;
 
             for (Folder folder : folders) {
                 for (String invoiceId : folder.getInvoiceIds()) {
                     Invoice invoice = invoiceRepository.findById(invoiceId).orElse(null);
                     if (invoice != null && invoice.getAddedAt() != null) {
                         String month = invoice.getAddedAt().getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+                        // Total invoices
                         invoicesByMonth.put(month, invoicesByMonth.get(month) + 1);
+
+                        // Validated invoices
+                        if ("validated".equalsIgnoreCase(invoice.getStatus())) {
+                            validatedByMonth.put(month, validatedByMonth.get(month) + 1);
+                        }
+
+                        // Count pending
+                        if ("pending".equalsIgnoreCase(invoice.getStatus())) {
+                            pendingInvoices++;
+                        }
                     }
                 }
             }
 
+            // Transformer les maps en listes pour les graphiques (frontend)
             List<Map<String, Object>> invoiceData = invoicesByMonth.entrySet().stream()
                     .map(entry -> {
                         Map<String, Object> point = new HashMap<>();
@@ -377,13 +376,23 @@ public class UserService {
                         return point;
                     })
                     .collect(Collectors.toList());
+
+            List<Map<String, Object>> validatedData = validatedByMonth.entrySet().stream()
+                    .map(entry -> {
+                        Map<String, Object> point = new HashMap<>();
+                        point.put("name", entry.getKey());
+                        point.put("validated", entry.getValue());
+                        return point;
+                    })
+                    .collect(Collectors.toList());
+
+            // Injecter les statistiques dans le résultat
             stats.put("totalClients", totalClients);
             stats.put("totalFolders", totalFolders);
             stats.put("totalInvoices", totalInvoices);
-            stats.put("validatedInvoices", validatedInvoices);
+            stats.put("pendingInvoices", pendingInvoices);
             stats.put("invoiceData", invoiceData);
-
-
+            stats.put("validatedInvoices", validatedData);
         }
 
         return stats;

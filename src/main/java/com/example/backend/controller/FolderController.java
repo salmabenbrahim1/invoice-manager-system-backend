@@ -125,6 +125,46 @@ public class FolderController {
         }
     }
 
+
+    @GetMapping("/by-internal-accountant/{accountantId}")
+    public ResponseEntity<List<Folder>> getFoldersByInternalAccountant(
+            @PathVariable String accountantId, Principal principal) {
+
+        try {
+            // Récupérer l'utilisateur connecté (doit être une entreprise)
+            User currentUser = userService.getCurrentUser(principal);
+
+            if (!(currentUser instanceof Company)) {
+                return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+            }
+
+            // Vérifier que l'entreprise a bien créé ce comptable interne
+            User accountant = userService.getUserById(accountantId, currentUser);
+            if (!(accountant instanceof CompanyAccountant)) {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+
+            if (!accountant.getCreatedBy().getId().equals(currentUser.getId())) {
+                return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+            }
+
+            // Récupérer les dossiers créés par ce comptable interne
+            List<Folder> folders = folderService.getFoldersByCreatorId(accountantId);
+
+            // Ajouter les infos client pour chaque dossier
+            for (Folder folder : folders) {
+                Client client = clientService.getClientById(folder.getClientId());
+                if (client != null) {
+                    folder.setClient(client);
+                }
+            }
+
+            return new ResponseEntity<>(folders, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+
 }
 
 

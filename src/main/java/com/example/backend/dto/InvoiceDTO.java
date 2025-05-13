@@ -6,7 +6,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Data
 //
-public class InvoiceCreateDTO {
+public class InvoiceDTO {
     //Uploaded data
     private String img;
     private String invoiceName;
@@ -21,13 +21,13 @@ public class InvoiceCreateDTO {
     private String dueDate;
     private String currency;
 
-     // The entity issuing the invoice
+    // The entity issuing the invoice
     private String sellerName;
     private String sellerAddress;
     private String sellerPhone;
     private String sellerSiretNumber;
 
-     // The customer for whom the invoice is issued
+    // The customer for whom the invoice is issued
     private String customerName;
     private String customerAddress;
     private String customerPhone;

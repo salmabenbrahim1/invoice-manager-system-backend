@@ -1,6 +1,6 @@
 package com.example.backend.controller;
 
-import com.example.backend.dto.InvoiceCreateDTO;
+import com.example.backend.dto.InvoiceDTO;
 import com.example.backend.model.Invoice;
 import com.example.backend.service.InvoiceService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +27,7 @@ public class InvoiceController {
             @RequestParam("folderId") String folderId,
             @RequestParam("file") MultipartFile file) throws IOException {
 
-        InvoiceCreateDTO dto = new InvoiceCreateDTO();
+        InvoiceDTO dto = new InvoiceDTO();
         dto.setInvoiceName(invoiceName);
         dto.setStatus(status);
         dto.setFolderId(folderId);
@@ -56,6 +56,12 @@ public class InvoiceController {
     }
 
 
+    @GetMapping("/{invoiceId}")
+    public ResponseEntity<Invoice> getInvoiceById(@PathVariable String invoiceId) {
+        Invoice invoice = invoiceService.getInvoiceById(invoiceId);
+        return ResponseEntity.ok(invoice);
+    }
+
     // Delete an invoice by ID
     @DeleteMapping("/{invoiceId}")
     public ResponseEntity<?> deleteInvoice(@PathVariable String invoiceId) {
@@ -82,7 +88,7 @@ public class InvoiceController {
             @RequestParam(value = "folderId", required = false) String folderId,
             @RequestParam(value = "file", required = false) MultipartFile file) throws IOException {
 
-        InvoiceCreateDTO dto = new InvoiceCreateDTO();
+        InvoiceDTO dto = new InvoiceDTO();
         if (invoiceName != null) dto.setInvoiceName(invoiceName);
         if (status != null) dto.setStatus(status);
         if (folderId != null) dto.setFolderId(folderId);
@@ -95,11 +101,12 @@ public class InvoiceController {
     @PutMapping("/extracted/{invoiceId}")
     public ResponseEntity<Invoice> updateExtractedData(
             @PathVariable String invoiceId,
-            @RequestBody InvoiceCreateDTO extractedData) {
+            @RequestBody InvoiceDTO extractedData) {
 
         Invoice updatedInvoice = invoiceService.updateExtractedData(invoiceId, extractedData);
         return ResponseEntity.ok(updatedInvoice);
     }
+    
 
 }
 
