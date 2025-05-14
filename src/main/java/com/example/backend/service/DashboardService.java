@@ -39,6 +39,7 @@ public class DashboardService {
                     .filter(u -> !(u instanceof Admin))
                     .collect(Collectors.toList());
 
+            // Map folders to users by email
             Map<String, List<Folder>> foldersByUser = new HashMap<>();
 
 
@@ -47,14 +48,13 @@ public class DashboardService {
                 List<Folder> userFolders = folderRepository.findByCreatedById(user.getId());
                 foldersByUser.put(user.getEmail(), userFolders);
             }
-
-            // Sort users by number of folders (descending order)
+            // Sort users by number of folders (descending) and limit to top 10
             List<Map.Entry<String, List<Folder>>> sortedEntries = foldersByUser.entrySet()
                     .stream()
                     .sorted((entry1, entry2) -> Integer.compare(entry2.getValue().size(), entry1.getValue().size()))
                     .collect(Collectors.toList());
 
-             // Retrieve only the first 10
+            // Build the top 10 folder stats
             sortedEntries = sortedEntries.stream().limit(10).collect(Collectors.toList());
 
 
@@ -90,7 +90,7 @@ public class DashboardService {
                 long invoiceCount = folders.stream()
                         .mapToLong(folder -> folder.getInvoiceIds() != null ? folder.getInvoiceIds().size() : 0)
                         .sum();
-                independentAccountantInvoices.put(accountant.getEmail(), invoiceCount); // email comme identifiant
+                independentAccountantInvoices.put(accountant.getEmail(), invoiceCount);
             }
 
             Map<String, Long> companyInvoices = new HashMap<>();
@@ -151,6 +151,7 @@ public class DashboardService {
 
             long totalInvoices = folders.stream().mapToLong(Folder::getInvoiceCount).sum();
 
+            // Initialize month maps
             Map<String, Long> invoicesByMonth = new LinkedHashMap<>();
             Map<String, Long> validatedByMonth = new LinkedHashMap<>();
             for (Month month : Month.values()) {
@@ -160,7 +161,7 @@ public class DashboardService {
             }
 
             long pendingInvoices = 0;
-
+            // Count invoices and statuses per month
             for (Folder folder : folders) {
                 for (String invoiceId : folder.getInvoiceIds()) {
                     Invoice invoice = invoiceRepository.findById(invoiceId).orElse(null);
@@ -177,7 +178,7 @@ public class DashboardService {
                     }
                 }
             }
-
+            // Prepare chart data
             List<Map<String, Object>> invoiceData = invoicesByMonth.entrySet().stream().map(entry -> {
                 Map<String, Object> point = new HashMap<>();
                 point.put("name", entry.getKey());
@@ -202,7 +203,6 @@ public class DashboardService {
             Company company = (Company) currentUser;
 
 
-// Replace the count method with findByRoleAndIdIn to retrieve the list of internal accountants
              List<User> internalAccountants = userRepository.findByRoleAndIdIn("INTERNAL_ACCOUNTANT", company.getAccountantIds());
 
             long totalInternalAccountants = internalAccountants.size();
@@ -214,6 +214,7 @@ public class DashboardService {
             List<String> clientIds = clients.stream().map(Client::getId).collect(Collectors.toList());
             List<Folder> folders = folderRepository.findByClientIdIn(clientIds);
 
+            // Initialize monthly counters
             Map<String, Long> invoicesByMonth = new LinkedHashMap<>();
             Map<String, Long> pendingInvoicesByMonth = new LinkedHashMap<>();
             for (Month month : Month.values()) {
@@ -228,7 +229,7 @@ public class DashboardService {
             long pendingInvoices = 0;
             long validatedInvoices = 0;
             long failedInvoices = 0;
-
+            // Count invoice status per folder
             for (Folder folder : folders) {
                 if (folder.getInvoiceIds() != null) {
                     for (String invoiceId : folder.getInvoiceIds()) {
@@ -250,6 +251,8 @@ public class DashboardService {
                 }
             }
 
+
+            // Prepare chart data
             List<Map<String, Object>> invoiceData = invoicesByMonth.entrySet().stream().map(entry -> {
                 Map<String, Object> point = new HashMap<>();
                 point.put("name", entry.getKey());
@@ -348,7 +351,7 @@ public class DashboardService {
 
             List<Map<String, Object>> validatedData = validatedByMonth.entrySet().stream().map(entry -> {
                 Map<String, Object> point = new HashMap<>();
-                point.put("name", entry.getKey());
+               // point.put("name", entry.getKey());
                 point.put("Validated", entry.getValue());
                 return point;
             }).collect(Collectors.toList());

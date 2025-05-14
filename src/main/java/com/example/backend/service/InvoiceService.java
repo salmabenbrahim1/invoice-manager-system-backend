@@ -131,7 +131,7 @@ public class InvoiceService {
         invoice.setTtc(extractedData.getTtc());
         invoice.setDiscount(extractedData.getDiscount());
 
-        invoice.setStatus("VALIDATED");
+        invoice.setStatus("Validated");
 
 
         return invoiceRepository.save(invoice);

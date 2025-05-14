@@ -25,6 +25,10 @@ public class AccountantAssignment {
 
     private LocalDateTime assignedAt;
 
+    private String companyName;
+
+
+
     public AccountantAssignment() {
         this.assignedAt = LocalDateTime.now();
     }
