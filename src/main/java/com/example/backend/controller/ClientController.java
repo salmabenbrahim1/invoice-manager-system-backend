@@ -1,5 +1,5 @@
 package com.example.backend.controller;
-import com.example.backend.dto.ClientAssignmentDTO;
+import com.example.backend.dto.AssignedClientDTO;
 import com.example.backend.dto.ClientDTO;
 import com.example.backend.model.AccountantAssignment;
 import com.example.backend.model.Client;
@@ -68,18 +68,20 @@ public class ClientController {
 
     @GetMapping("/my-clients")
     @PreAuthorize("hasRole('INTERNAL_ACCOUNTANT')")
-    public ResponseEntity<List<Client>> getClientsForInternalAccountant(Principal principal) {
+    public ResponseEntity<List<AssignedClientDTO>> getClientsForInternalAccountant(Principal principal) {
         String email = principal.getName();
         CompanyAccountant accountant = (CompanyAccountant) userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Accountant not found"));
 
         List<AccountantAssignment> assignments = assignmentRepository.findByAccountant_Id(accountant.getId());
-        List<Client> clients = assignments.stream()
-                .map(AccountantAssignment::getClient)
+
+        List<AssignedClientDTO> clientsWithAssignmentDate = assignments.stream()
+                .map(a -> new AssignedClientDTO(a.getClient(), a.getAssignedAt(), a.getCompanyName()))
                 .collect(Collectors.toList());
 
-        return ResponseEntity.ok(clients);
+        return ResponseEntity.ok(clientsWithAssignmentDate);
     }
+
 
 
 
