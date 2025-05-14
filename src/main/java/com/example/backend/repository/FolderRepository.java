@@ -7,5 +7,7 @@ import java.util.List;
 
 public interface FolderRepository extends MongoRepository<Folder, String> {
     List<Folder> findByCreatedById(String createdById);
-    long countByCreatedById(String createdById);
+
+    List<Folder> findByClientIdIn(List<String> clientIds);
+
 }

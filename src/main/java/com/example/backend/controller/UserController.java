@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import com.example.backend.service.DashboardService;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +25,7 @@ public class UserController {
 
     private final UserService userService;
     private final JwtUtils jwtUtils;
+    private final DashboardService DashboardService;
 
     // Extract current authenticated user from JWT
     private User getCurrentUser(HttpServletRequest request) {
@@ -148,27 +149,6 @@ public class UserController {
     }
 
 
-    @GetMapping("/dashboard")
-    public ResponseEntity<?> getUserStats(HttpServletRequest request) {
-        try {
-            // Get current user from JWT token
-            User currentUser = getCurrentUser(request);
-
-            // Get statistics from service
-            Map<String, Object> stats = userService.getUserStats(currentUser);
-
-            // Return the statistics
-            return ResponseEntity.ok(stats);
-
-        } catch (SecurityException e) {
-            // Handle cases where JWT is invalid or missing
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("Authentication error: " + e.getMessage());
-        }
-
-
-
-    }
 
     // Get current authenticated user's profile
     @GetMapping("/me")
