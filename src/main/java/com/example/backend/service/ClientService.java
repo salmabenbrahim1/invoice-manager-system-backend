@@ -1,9 +1,11 @@
 package com.example.backend.service;
-//
+import com.example.backend.dto.ClientAssignmentDTO;
 import com.example.backend.model.*;
+import com.example.backend.repository.AccountantAssignmentRepository;
 import com.example.backend.repository.ClientRepository;
 import com.example.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +22,9 @@ public class ClientService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
 
+    @Autowired
+    private AccountantAssignmentRepository assignmentRepository;
+
     public Client createClient(User creator, String name, String email, String phone, String assignedAccountantId) {
         if (!(creator instanceof IndependentAccountant || creator instanceof Company)) {
             throw new SecurityException("Unauthorized to create clients");
@@ -33,18 +38,6 @@ public class ClientService {
         client.setPhone(phone);
         client.setPassword(passwordEncoder.encode(generatedPassword));
         client.setCreatedBy(creator);
-
-        // Assign to internal accountant (only for companies)
-        /*if (creator instanceof Company && assignedAccountantId != null) {
-            CompanyAccountant accountant = (CompanyAccountant) userRepository.findById(assignedAccountantId).orElseThrow();
-            client.setAssignedTo(accountant);
-
-            // Add to accountant's client list
-            accountant.getClientIds().add(client.getId());
-            userRepository.save(accountant);
-
-
-        }*/
 
         Client savedClient = clientRepository.save(client);
 
@@ -64,10 +57,7 @@ public class ClientService {
     }
 
 
-
-
-    // Assign Accountant to an existing client
-    public Client assignAccountantToClient(User updater, String clientId, String assignedAccountantId) {
+    public Client assignAccountantToClient(User updater, String clientId, String accountantId) {
         if (!(updater instanceof Company)) {
             throw new SecurityException("Only companies can assign accountants to clients.");
         }
@@ -75,29 +65,35 @@ public class ClientService {
         Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new IllegalArgumentException("Client not found"));
 
-        // Ensure the client was created by the company
         if (!client.getCreatedBy().getId().equals(updater.getId())) {
             throw new SecurityException("Unauthorized to assign an accountant to this client");
         }
 
-        CompanyAccountant accountant = (CompanyAccountant) userRepository.findById(assignedAccountantId)
+        CompanyAccountant accountant = (CompanyAccountant) userRepository.findById(accountantId)
                 .orElseThrow(() -> new IllegalArgumentException("Accountant not found"));
 
-        // Assign accountant to client
-        client.setAssignedTo(accountant);
+        // Save the assignment as a new document
+        AccountantAssignment assignment = new AccountantAssignment();
+        assignment.setAccountant(accountant);
+        assignment.setClient(client);
+        assignmentRepository.save(assignment);
 
-        // Add the client to the accountant's list
+        // Optionally update references in the user and client if still needed
+        client.setAssignedTo(accountant); // optional legacy reference
+        clientRepository.save(client);
+
+        // Add client ID to accountant's list (optional legacy)
         accountant.getClientIds().add(client.getId());
         userRepository.save(accountant);
 
-        return clientRepository.save(client);
+        return client;
     }
+
 
 
     public List<Client> getClientsCreatedBy(User user) {
         return clientRepository.findByCreatedBy_Id(user.getId());
     }
-
 
 
     public Client updateClient(User updater, String clientId, String name, String email, String phone, String assignedAccountantId) {
@@ -155,5 +151,20 @@ public class ClientService {
     public Client getClientById(String clientId) {
         return clientRepository.findById(clientId).orElse(null);
     }
+
+    public ClientAssignmentDTO getClientAssignmentDetails(String clientId) {
+        // Fetch the client
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new IllegalArgumentException("Client not found"));
+
+        // Fetch the accountant assignment related to this client
+        AccountantAssignment assignment = assignmentRepository.findByClient_Id(clientId).stream()
+                .findFirst() // Assuming one assignment per client (if this is a one-to-one assignment)
+                .orElseThrow(() -> new IllegalArgumentException("No assignment found for this client"));
+
+        // Create and return the DTO with client and assignment details
+        return new ClientAssignmentDTO(client, assignment.getAssignedAt());
+    }
+
 
 }

@@ -1,6 +1,6 @@
 package com.example.backend.service;
 
-import com.example.backend.dto.InvoiceCreateDTO;
+import com.example.backend.dto.InvoiceDTO;
 import com.example.backend.model.Folder;
 import com.example.backend.model.Invoice;
 import com.example.backend.repository.FolderRepository;
@@ -47,7 +47,14 @@ public class InvoiceService {
     }
 
 
-    // Save the uploaded file
+    public Invoice getInvoiceById(String invoiceId) {
+        return invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Invoice not found with ID: " + invoiceId));
+    }
+
+
+
+    // Save the upload added file
     public String saveFile(MultipartFile file) throws IOException {
         String uploadDir = "uploads/invoices";
         File directory = new File(uploadDir);
@@ -70,7 +77,7 @@ public class InvoiceService {
 
 
     // 
-    public Invoice saveInvoice(MultipartFile file, InvoiceCreateDTO dto) throws IOException {
+    public Invoice saveInvoice(MultipartFile file, InvoiceDTO dto) throws IOException {
         // 1. Save the image file
         String savedImagePath = saveFile(file);
 
@@ -98,7 +105,7 @@ public class InvoiceService {
     }
 
     //
-    public Invoice updateExtractedData(String invoiceId, InvoiceCreateDTO extractedData) {
+    public Invoice updateExtractedData(String invoiceId, InvoiceDTO extractedData) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new RuntimeException("Invoice not found with ID: " + invoiceId));
 
@@ -155,7 +162,7 @@ public class InvoiceService {
     }
 
     // Update invoice method
-    public Invoice updateInvoice(String invoiceId, InvoiceCreateDTO dto, MultipartFile file) throws IOException {
+    public Invoice updateInvoice(String invoiceId, InvoiceDTO dto, MultipartFile file) throws IOException {
         if (invoiceId == null || invoiceId.isEmpty()) {
             throw new IllegalArgumentException("Invoice ID cannot be null or empty");
         }

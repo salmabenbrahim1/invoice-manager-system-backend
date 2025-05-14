@@ -1,13 +1,17 @@
 package com.example.backend.controller;
-import com.example.backend.dto.ClientCreateDTO;
+import com.example.backend.dto.ClientAssignmentDTO;
+import com.example.backend.dto.ClientDTO;
+import com.example.backend.model.AccountantAssignment;
 import com.example.backend.model.Client;
 import com.example.backend.model.CompanyAccountant;
 import com.example.backend.model.User;
+import com.example.backend.repository.AccountantAssignmentRepository;
 import com.example.backend.repository.ClientRepository;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.service.ClientService;
 import com.example.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 //
 @RestController
@@ -27,13 +32,15 @@ public class ClientController {
     private final UserService userService;
     private final UserRepository userRepository;
     private final ClientRepository clientRepository;
+    private final AccountantAssignmentRepository assignmentRepository;
+
 
 
 
 
     // Create a new client
     @PostMapping
-    public ResponseEntity<Client> createClient(@RequestBody ClientCreateDTO request, Principal principal) {
+    public ResponseEntity<Client> createClient(@RequestBody ClientDTO request, Principal principal) {
         try {
             User creator = userService.getCurrentUser(principal);
             Client createdClient = clientService.createClient(creator, request.getName(), request.getEmail(), request.getPhone(), request.getAssignedAccountantId());
@@ -58,23 +65,22 @@ public class ClientController {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
     }
+
     @GetMapping("/my-clients")
     @PreAuthorize("hasRole('INTERNAL_ACCOUNTANT')")
     public ResponseEntity<List<Client>> getClientsForInternalAccountant(Principal principal) {
         String email = principal.getName();
-
-        // Fetch the logged-in accountant using email
         CompanyAccountant accountant = (CompanyAccountant) userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Accountant not found"));
 
-        // Get the list of client IDs
-        List<String> clientIds = accountant.getClientIds();
+        List<AccountantAssignment> assignments = assignmentRepository.findByAccountant_Id(accountant.getId());
+        List<Client> clients = assignments.stream()
+                .map(AccountantAssignment::getClient)
+                .collect(Collectors.toList());
 
-        // Fetch clients by their IDs
-        List<Client> assignedClients = clientRepository.findAllById(clientIds);
-
-        return ResponseEntity.ok(assignedClients);
+        return ResponseEntity.ok(clients);
     }
+
 
 
 
@@ -90,11 +96,14 @@ public class ClientController {
         }
     }
 
+    
+
+
     // Update a client
     @PutMapping("/{clientId}")
     public ResponseEntity<Client> updateClient(
             @PathVariable String clientId,
-            @RequestBody ClientCreateDTO request,
+            @RequestBody ClientDTO request,
             Principal principal) {
         try {
             User updater = userService.getCurrentUser(principal);

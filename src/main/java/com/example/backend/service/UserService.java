@@ -1,13 +1,12 @@
 package com.example.backend.service;
 
-import com.example.backend.dto.UserCreateDTO;
+import com.example.backend.dto.UserDTO;
 import com.example.backend.model.*;
 import com.example.backend.repository.ClientRepository;
 import com.example.backend.repository.FolderRepository;
 import com.example.backend.repository.InvoiceRepository;
 import com.example.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -33,7 +32,7 @@ public class UserService {
     private final InvoiceRepository invoiceRepository;
 
 
-    private <T extends User> T populateCommonFields(T user, UserCreateDTO dto, User creator) {
+    private <T extends User> T populateCommonFields(T user, UserDTO dto, User creator) {
         user.setEmail(dto.getEmail());
         user.setPhone(dto.getPhone());
         user.setCreatedBy(creator);
@@ -53,7 +52,7 @@ public class UserService {
         }
     }
 
-    public Map<String, Object> createUser(User currentUser, UserCreateDTO dto) {
+    public Map<String, Object> createUser(User currentUser, UserDTO dto) {
         if (currentUser == null) {
             throw new IllegalArgumentException("Current user cannot be null");
         }
@@ -97,10 +96,12 @@ public class UserService {
         newUser.setPassword(passwordEncoder.encode(generatedPassword));
 
         // Check the generated password being sent to the user
-        System.out.println("Generated password: " + generatedPassword);
 
         // Save the created user
         User savedUser = userRepository.save(newUser);
+
+        System.out.println("Generated password: " + generatedPassword);
+
 
         // Add the accountant ID to the company's list if applicable
         if (savedUser instanceof CompanyAccountant && currentUser instanceof Company company) {

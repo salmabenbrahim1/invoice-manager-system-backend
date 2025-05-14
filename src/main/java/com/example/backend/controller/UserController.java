@@ -1,9 +1,8 @@
 package com.example.backend.controller;
 //
-import com.example.backend.model.CompanyAccountant;
 import com.example.backend.model.User;
 import com.example.backend.security.JwtUtils;
-import com.example.backend.dto.UserCreateDTO;
+import com.example.backend.dto.UserDTO;
 import com.example.backend.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.example.backend.service.DashboardService;
 import java.util.Collections;
-import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -48,10 +46,10 @@ public class UserController {
 
     // Create a new user ( from Admin or Company)
     @PostMapping
-    public ResponseEntity<?> createUser(@RequestBody UserCreateDTO userCreateDTO, HttpServletRequest request) {
+    public ResponseEntity<?> createUser(@RequestBody UserDTO userDto, HttpServletRequest request) {
         try {
             User currentUser = getCurrentUser(request);
-            Map<String, Object> response = userService.createUser(currentUser, userCreateDTO);
+            Map<String, Object> response = userService.createUser(currentUser, userDto);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
@@ -151,27 +149,6 @@ public class UserController {
     }
 
 
-    @GetMapping("/dashboard")
-    public ResponseEntity<?> getUserStats(HttpServletRequest request) {
-        try {
-            // Get current user from JWT token
-            User currentUser = getCurrentUser(request);
-
-            // Get statistics from service
-            Map<String, Object> stats = DashboardService.getUserStats(currentUser);
-
-            // Return the statistics
-            return ResponseEntity.ok(stats);
-
-        } catch (SecurityException e) {
-            // Handle cases where JWT is invalid or missing
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("Authentication error: " + e.getMessage());
-        }
-
-
-
-    }
 
     // Get current authenticated user's profile
     @GetMapping("/me")

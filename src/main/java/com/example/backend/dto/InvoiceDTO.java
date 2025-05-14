@@ -6,7 +6,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Data
 //
-public class InvoiceCreateDTO {
+public class InvoiceDTO {
     //Uploaded data
     private String img;
     private String invoiceName;

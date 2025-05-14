@@ -13,6 +13,10 @@ public interface UserRepository extends MongoRepository<User, String> {
     // Add this new method
     @Query(value = "{ 'email' : { $regex : ?0, $options: 'i' } }", exists = true)
     boolean existsByEmailIgnoreCase(String email);
-    long countByRoleAndIdIn(String role, List<String> companyAccountantIds);
+    List<User> findByRoleAndIdIn(String role, List<String> companyAccountantIds);
+
+    List<User> findByRole(String role);
+
+
 
 }

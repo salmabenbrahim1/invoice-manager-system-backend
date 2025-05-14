@@ -13,7 +13,7 @@ public class Company extends User {
 
 
     private String companyName;
-    //eventually adding serial number
+    //eventually adding siretNumber
 
     // List of Internal accountants IDs
     private List<String> accountantIds = new ArrayList<>();
