@@ -12,6 +12,8 @@ public class FolderDTO {
     private String folderName;
     private String description;
     private String clientId;  // For existing client
+    private boolean archived;
+    private boolean favorite;
 
     // New client details, used only when clientId is not provided
     private String clientName;

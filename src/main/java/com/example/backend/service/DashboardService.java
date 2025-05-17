@@ -4,6 +4,8 @@ import com.example.backend.model.*;
 import com.example.backend.repository.*;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.Month;
 import java.time.format.TextStyle;
 import java.util.*;
@@ -193,12 +195,48 @@ public class DashboardService {
                 return point;
             }).collect(Collectors.toList());
 
+            long archivedFolders = folders.stream()
+                    .filter(Folder::isArchived)
+                    .count();
+
+            stats.put("archivedFiles", archivedFolders);
+            LocalDateTime now = LocalDateTime.now();
+
+            // of the year
+            LocalDateTime startOfYear = now.withDayOfYear(1).with(LocalTime.MIN);
+
+            //of the month
+            LocalDateTime startOfMonth = now.withDayOfMonth(1).with(LocalTime.MIN);
+
+            // Archived this year
+            long archivedThisYear = folders.stream()
+                    .filter(Folder::isArchived)
+                    .filter(folder -> folder.getCreatedAt().isAfter(startOfYear))
+                    .count();
+            stats.put("archivedThisYear", archivedThisYear);
+
+            // Archived this month
+            long archivedThisMonth = folders.stream()
+                    .filter(Folder::isArchived)
+                    .filter(folder -> folder.getCreatedAt().isAfter(startOfMonth))
+                    .count();
+            stats.put("recentArchives", archivedThisMonth);
+
+
+            long favoriteFolders = folders.stream()
+                    .filter(Folder::isFavorite)
+                    .filter(folder -> !folder.isArchived())
+                    .count();
+            stats.put("favoriteFolders", favoriteFolders);
+
             stats.put("totalClients", totalClients);
             stats.put("totalFolders", totalFolders);
             stats.put("totalInvoices", totalInvoices);
             stats.put("pendingInvoices", pendingInvoices);
             stats.put("invoiceData", invoiceData);
             stats.put("validatedInvoices", validatedData);
+
+
         } else if (currentUser instanceof Company) {
             Company company = (Company) currentUser;
 
@@ -294,27 +332,30 @@ public class DashboardService {
             stats.put("disabledInternalAccountants", inactiveInternalAccountants);
 
         }
+
         else if ("INTERNAL_ACCOUNTANT".equalsIgnoreCase(currentUser.getRole())) {
             User internalAccountant = currentUser;
 
-            // Retrieve the clients assigned to this internal accountant
+            // Retrieve clients assigned to this internal accountant
             List<AccountantAssignment> assignments = accountantAssignmentRepository.findByAccountant_Id(internalAccountant.getId());
             Set<String> clientIds = assignments.stream()
                     .map(a -> a.getClient().getId())
                     .collect(Collectors.toSet());
 
-            List<Client> clients = clientRepository.findAllById(clientIds);
+            // Retrieve folders related to assigned clients
             List<Folder> folders = folderRepository.findByClientIdIn(new ArrayList<>(clientIds));
 
-            long totalClients = clients.size();
+            long totalClients = clientIds.size();
             long totalFolders = folders.size();
+
+            // Calculate the total invoices in these folders
             long totalInvoices = folders.stream()
-                    .mapToLong(f -> f.getInvoiceIds() != null ? f.getInvoiceIds().size() : 0)
+                    .mapToLong(folder -> folder.getInvoiceIds() != null ? folder.getInvoiceIds().size() : 0)
                     .sum();
 
+            // Initialize the months for the stats
             Map<String, Long> invoicesByMonth = new LinkedHashMap<>();
             Map<String, Long> validatedByMonth = new LinkedHashMap<>();
-
             for (Month month : Month.values()) {
                 String monthName = month.getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
                 invoicesByMonth.put(monthName, 0L);
@@ -322,17 +363,17 @@ public class DashboardService {
             }
 
             long pendingInvoices = 0;
-
+            // Browse invoices and tally by month and status
             for (Folder folder : folders) {
                 if (folder.getInvoiceIds() != null) {
                     for (String invoiceId : folder.getInvoiceIds()) {
                         Invoice invoice = invoiceRepository.findById(invoiceId).orElse(null);
                         if (invoice != null && invoice.getAddedAt() != null) {
                             String month = invoice.getAddedAt().getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
-                            invoicesByMonth.put(month, invoicesByMonth.getOrDefault(month, 0L) + 1);
+                            invoicesByMonth.put(month, invoicesByMonth.get(month) + 1);
 
-                            if ("Validated".equalsIgnoreCase(invoice.getStatus())) {
-                                validatedByMonth.put(month, validatedByMonth.getOrDefault(month, 0L) + 1);
+                            if ("validated".equalsIgnoreCase(invoice.getStatus())) {
+                                validatedByMonth.put(month, validatedByMonth.get(month) + 1);
                             }
                             if ("pending".equalsIgnoreCase(invoice.getStatus())) {
                                 pendingInvoices++;
@@ -341,6 +382,7 @@ public class DashboardService {
                     }
                 }
             }
+
 
             List<Map<String, Object>> invoiceData = invoicesByMonth.entrySet().stream().map(entry -> {
                 Map<String, Object> point = new HashMap<>();
@@ -351,10 +393,43 @@ public class DashboardService {
 
             List<Map<String, Object>> validatedData = validatedByMonth.entrySet().stream().map(entry -> {
                 Map<String, Object> point = new HashMap<>();
-               // point.put("name", entry.getKey());
-                point.put("Validated", entry.getValue());
+                point.put("name", entry.getKey());
+                point.put("validated", entry.getValue());
                 return point;
             }).collect(Collectors.toList());
+
+            // Calculation of archives
+            long archivedFolders = folders.stream()
+                    .filter(Folder::isArchived)
+                    .count();
+            stats.put("archivedFiles", archivedFolders);
+
+
+
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime startOfYear = now.withDayOfYear(1).with(LocalTime.MIN);
+            LocalDateTime startOfMonth = now.withDayOfMonth(1).with(LocalTime.MIN);
+
+            long archivedThisYear = folders.stream()
+                    .filter(Folder::isArchived)
+                    .filter(folder -> folder.getCreatedAt().isAfter(startOfYear))
+                    .count();
+
+            long archivedThisMonth = folders.stream()
+                    .filter(Folder::isArchived)
+                    .filter(folder -> folder.getCreatedAt().isAfter(startOfMonth))
+                    .count();
+
+            stats.put("archivedThisYear", archivedThisYear);
+            stats.put("recentArchives", archivedThisMonth);
+
+            long favoriteFolders = folders.stream()
+                    .filter(Folder::isFavorite)
+                    .filter(folder -> !folder.isArchived())
+                    .count();
+            stats.put("favoriteFolders", favoriteFolders);
+
+
 
             stats.put("totalClients", totalClients);
             stats.put("totalFolders", totalFolders);
@@ -363,8 +438,6 @@ public class DashboardService {
             stats.put("invoiceData", invoiceData);
             stats.put("validatedInvoices", validatedData);
         }
-
-
 
 
         return stats;

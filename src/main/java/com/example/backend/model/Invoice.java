@@ -24,8 +24,9 @@ public class Invoice {
     private LocalDateTime addedAt;
 
     private String folderId;
+    private boolean archived = false;
 
-   private String invoiceNumber;
+    private String invoiceNumber;
    private String invoiceDate;
    private String dueDate;
    private String currency;

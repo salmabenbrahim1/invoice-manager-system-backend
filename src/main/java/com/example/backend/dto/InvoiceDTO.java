@@ -13,6 +13,7 @@ public class InvoiceDTO {
     private String status;
     private String folderId;
     private MultipartFile file;
+    private boolean archived;
 
 
     //Extracted fields from invoice
