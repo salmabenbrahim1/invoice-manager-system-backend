@@ -165,6 +165,35 @@ public class FolderController {
         }
     }
 
+
+
+    @PutMapping("/{folderId}/archive")
+    public ResponseEntity<String> archiveFolder(@PathVariable String folderId) {
+        folderService.archiveFolder(folderId);
+        return ResponseEntity.ok("Folder archived successfully");
+    }
+
+    @PutMapping("/{folderId}/unarchive")
+    public ResponseEntity<String> unarchiveFolder(@PathVariable String folderId) {
+        folderService.unarchiveFolder(folderId);
+        return ResponseEntity.ok("Folder unarchived successfully");
+    }
+
+
+    @PutMapping("/{id}/favorite")
+    public ResponseEntity<Void> markAsFavorite(@PathVariable("id") String folderId) {
+        folderService.markAsFavorite(folderId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{id}/unfavorite")
+    public ResponseEntity<Void> unmarkAsFavorite(@PathVariable("id") String folderId) {
+        folderService.unmarkAsFavorite(folderId);
+        return ResponseEntity.ok().build();
+    }
+
+
+
 }
 
 
