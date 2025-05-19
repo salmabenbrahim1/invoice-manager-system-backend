@@ -158,6 +158,22 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unable to fetch user profile.");
         }
     }
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(@RequestBody User updatedProfile, HttpServletRequest request) {
+        try {
+            User currentUser = getCurrentUser(request);
+            User updated = userService.updateUserProfile(currentUser, updatedProfile);
+            return ResponseEntity.ok(updated);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update profile.");
+        }
+    }
+
+
     @GetMapping("/check-email")
     public ResponseEntity<Boolean> checkEmailExists(
             @RequestParam String email,

@@ -330,6 +330,33 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
+    public User updateUserProfile(User currentUser, User updatedProfile) {
+        if (updatedProfile == null) {
+            throw new IllegalArgumentException("Updated profile cannot be null");
+        }
+
+        currentUser.setPhone(updatedProfile.getPhone());
+
+        if (currentUser instanceof Company company && updatedProfile instanceof Company updatedCompany) {
+            company.setCompanyName(updatedCompany.getCompanyName());
+        } else if (currentUser instanceof IndependentAccountant independent && updatedProfile instanceof IndependentAccountant updatedIndependent) {
+            independent.setFirstName(updatedIndependent.getFirstName());
+            independent.setLastName(updatedIndependent.getLastName());
+            independent.setCin(updatedIndependent.getCin());
+            independent.setGender(updatedIndependent.getGender());
+        } else if (currentUser instanceof CompanyAccountant internal && updatedProfile instanceof CompanyAccountant updatedInternal) {
+            internal.setFirstName(updatedInternal.getFirstName());
+            internal.setLastName(updatedInternal.getLastName());
+            internal.setCin(updatedInternal.getCin());
+            internal.setGender(updatedInternal.getGender());
+        }
+
+        if (updatedProfile.getPassword() != null && !updatedProfile.getPassword().isBlank()) {
+            currentUser.setPassword(passwordEncoder.encode(updatedProfile.getPassword()));
+        }
+
+        return userRepository.save(currentUser);
+    }
 
 
 }
