@@ -9,7 +9,7 @@ import java.util.Map;
 @Service
 public class EmailValidationService {
 
-    private final String accessKey = "c2c0701102c32bffe9a1f4f72f775404";
+    private final String accessKey = "9a18bdce37c1bd89b859857963c2c0e9";
     private final String apiUrl = "https://apilayer.net/api/check?access_key=%s&email=%s&smtp=1&format=1";
 
     public boolean isEmailValid(String email) {

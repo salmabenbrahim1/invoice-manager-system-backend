@@ -29,6 +29,11 @@ public class Folder {
 
     @CreatedDate
     private LocalDateTime createdAt;
+    private boolean archived = false;
+    private LocalDateTime archivedAt;
+    private boolean favorite = false;
+
+
 
 
 
@@ -42,5 +47,7 @@ public class Folder {
         this.createdById = createdById;
         this.createdByRole = createdByRole;
         this.createdAt = LocalDateTime.now();
+        this.archivedAt= LocalDateTime.now();
+
     }
 }

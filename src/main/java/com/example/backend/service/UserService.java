@@ -153,6 +153,8 @@ public class UserService {
         // Send the email
         boolean emailSent = emailService.sendEmail(dto.getEmail(), subject, body);
 
+
+
         Map<String, Object> response = new HashMap<>();
         response.put("user", savedUser);
         response.put("emailSent", emailSent);
@@ -287,117 +289,7 @@ public class UserService {
         return user;
     }
 
-    public Map<String, Object> getUserStats(User currentUser) {
-        Map<String, Object> stats = new HashMap<>();
 
-        if (currentUser instanceof Admin) {
-            // Get all non-admin users
-            List<User> nonAdminUsers = userRepository.findAll().stream()
-                    .filter(u -> !(u instanceof Admin))
-                    .collect(Collectors.toList());
-
-            // User statistics (excluding admin)
-            long activeUsers = nonAdminUsers.stream().filter(User::isActive).count();
-            long inactiveUsers = nonAdminUsers.size() - activeUsers;
-
-            stats.put("totalCompanies", nonAdminUsers.stream()
-                    .filter(u -> u instanceof Company)
-                    .count());
-
-            stats.put("totalIndependentAccountants", nonAdminUsers.stream()
-                    .filter(u -> u instanceof IndependentAccountant)
-                    .count());
-
-            stats.put("activeUsers", activeUsers);
-            stats.put("inactiveUsers", inactiveUsers);
-
-            // Invoice statistics (unchanged)
-            Long totalInvoices = invoiceRepository.count();
-            stats.put("totalInvoicesExtracted", totalInvoices != null ? totalInvoices : 0L);
-
-            // Invoices count by user type (unchanged)
-            Long companyInvoices = invoiceRepository.countByUserRole("COMPANY");
-            Long accountantInvoices = invoiceRepository.countByUserRole("INDEPENDENT_ACCOUNTANT");
-            stats.put("companyInvoices", companyInvoices != null ? companyInvoices : 0L);
-            stats.put("accountantInvoices", accountantInvoices != null ? accountantInvoices : 0L);
-        }
-
-        else if (currentUser instanceof IndependentAccountant) {
-            IndependentAccountant accountant = (IndependentAccountant) currentUser;
-
-            long totalClients = clientRepository.findByCreatedBy_Id(accountant.getId()).size();
-            long totalFolders = folderRepository.findByCreatedById(accountant.getId()).size();
-
-            List<Folder> folders = folderRepository.findByCreatedById(accountant.getId());
-
-            long totalInvoices = folders.stream()
-                    .mapToLong(Folder::getInvoiceCount)
-                    .sum();
-
-            // Initialisation des maps pour les graphiques
-            Map<String, Long> invoicesByMonth = new LinkedHashMap<>();
-            Map<String, Long> validatedByMonth = new LinkedHashMap<>();
-
-            for (Month month : Month.values()) {
-                String monthName = month.getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
-                invoicesByMonth.put(monthName, 0L);
-                validatedByMonth.put(monthName, 0L);
-            }
-
-            long pendingInvoices = 0;
-
-            for (Folder folder : folders) {
-                for (String invoiceId : folder.getInvoiceIds()) {
-                    Invoice invoice = invoiceRepository.findById(invoiceId).orElse(null);
-                    if (invoice != null && invoice.getAddedAt() != null) {
-                        String month = invoice.getAddedAt().getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
-                        // Total invoices
-                        invoicesByMonth.put(month, invoicesByMonth.get(month) + 1);
-
-                        // Validated invoices
-                        if ("validated".equalsIgnoreCase(invoice.getStatus())) {
-                            validatedByMonth.put(month, validatedByMonth.get(month) + 1);
-                        }
-
-                        // Count pending
-                        if ("pending".equalsIgnoreCase(invoice.getStatus())) {
-                            pendingInvoices++;
-                        }
-                    }
-                }
-            }
-
-            // Transformer les maps en listes pour les graphiques (frontend)
-            List<Map<String, Object>> invoiceData = invoicesByMonth.entrySet().stream()
-                    .map(entry -> {
-                        Map<String, Object> point = new HashMap<>();
-                        point.put("name", entry.getKey());
-                        point.put("invoices", entry.getValue());
-                        return point;
-                    })
-                    .collect(Collectors.toList());
-
-            List<Map<String, Object>> validatedData = validatedByMonth.entrySet().stream()
-                    .map(entry -> {
-                        Map<String, Object> point = new HashMap<>();
-                        point.put("name", entry.getKey());
-                        point.put("validated", entry.getValue());
-                        return point;
-                    })
-                    .collect(Collectors.toList());
-
-            // Injecter les statistiques dans le résultat
-            stats.put("totalClients", totalClients);
-            stats.put("totalFolders", totalFolders);
-            stats.put("totalInvoices", totalInvoices);
-            stats.put("pendingInvoices", pendingInvoices);
-            stats.put("invoiceData", invoiceData);
-            stats.put("validatedInvoices", validatedData);
-        }
-
-        return stats;
-
-    }
 
     public String generateBase64Password() {
         SecureRandom random = new SecureRandom();
