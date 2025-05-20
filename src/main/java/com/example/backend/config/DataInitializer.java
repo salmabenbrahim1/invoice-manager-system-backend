@@ -23,12 +23,12 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         // Check if the admin user already exists
-        Optional<User> adminUserOpt = userRepository.findByEmail("admin@gmail.com");
+        Optional<User> adminUserOpt = userRepository.findByEmail("invox2025@gmail.com");
 
         if (adminUserOpt.isEmpty()) {
             User adminUser = new Admin();
-            adminUser.setEmail("admin@gmail.com");
-            adminUser.setPassword(passwordEncoder.encode("admin123"));
+            adminUser.setEmail("invox2025@gmail.com");
+            adminUser.setPassword(passwordEncoder.encode("admin/@8450$q2025"));
             adminUser.setRole("ADMIN");
 
             userRepository.save(adminUser);
