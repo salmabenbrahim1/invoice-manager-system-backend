@@ -7,8 +7,12 @@ import com.example.backend.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -153,16 +157,30 @@ public class UserController {
     public ResponseEntity<?> getCurrentUserProfile(HttpServletRequest request) {
         try {
             User currentUser = getCurrentUser(request);
+
+            // Convert relative path to full URL
+            if (currentUser.getProfileImageUrl() != null) {
+                String fullImageUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
+                        .path(currentUser.getProfileImageUrl())
+                        .toUriString();
+                currentUser.setProfileImageUrl(fullImageUrl);
+            }
+
             return ResponseEntity.ok(currentUser);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unable to fetch user profile.");
         }
     }
-    @PutMapping("/profile")
-    public ResponseEntity<?> updateProfile(@RequestBody User updatedProfile, HttpServletRequest request) {
+    @PutMapping(value = "/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updateProfile(
+            @RequestPart("data") User updatedProfile,
+            @RequestPart(value = "image", required = false) MultipartFile imageFile,
+            @RequestPart(value = "removeImage", required = false) String removeImageStr,
+            HttpServletRequest request) {
         try {
             User currentUser = getCurrentUser(request);
-            User updated = userService.updateUserProfile(currentUser, updatedProfile);
+            boolean removeImage = "true".equalsIgnoreCase(removeImageStr);
+            User updated = userService.updateUserProfile(currentUser, updatedProfile, imageFile, removeImage);
             return ResponseEntity.ok(updated);
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
@@ -172,6 +190,8 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update profile.");
         }
     }
+
+
 
 
     @GetMapping("/check-email")

@@ -2,6 +2,8 @@ package com.example.backend.dto;
 
 
 import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
+
 //
 @Data
 public class UserDTO {
@@ -10,6 +12,7 @@ public class UserDTO {
     private String role;
 
     private String createdById;
+    private transient MultipartFile image;
 
     // For individual accountants
     private String firstName;
