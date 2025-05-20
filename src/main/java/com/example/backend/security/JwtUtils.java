@@ -85,7 +85,7 @@ public class JwtUtils {
     // Change extractUsername() to:
     public String extractUsername(String token) {
         String username = extractClaims(token, Claims::getSubject);
-        System.out.println("📧 JWT contains username: " + username); // Always log for debugging
+        System.out.println("JWT contains username: " + username); // Always log for debugging
         return username;
     }
 

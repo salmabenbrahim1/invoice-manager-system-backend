@@ -34,6 +34,8 @@ public  abstract class User implements UserDetails {
     private String password;
     private String role;
     private boolean isActive = true;
+    private String profileImageUrl;
+
 
     @DBRef
     @Field("createdBy")
