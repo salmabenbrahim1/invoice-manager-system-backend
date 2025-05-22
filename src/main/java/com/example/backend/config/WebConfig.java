@@ -28,5 +28,12 @@ public class WebConfig implements WebMvcConfigurer {
 
         registry.addResourceHandler("/uploads/invoices/**")
                 .addResourceLocations("file:" + uploadPath + "/");
+
+        // Handler pour les images de profil
+        Path profileDir = Paths.get("uploads/profile-images");
+        String profilePath = profileDir.toFile().getAbsolutePath();
+        registry.addResourceHandler("/uploads/profile-images/**")
+                .addResourceLocations("file:" + profilePath + "/");
     }
+
 }

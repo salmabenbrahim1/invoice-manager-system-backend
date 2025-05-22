@@ -9,11 +9,15 @@ import com.example.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.security.Principal;
 import java.security.SecureRandom;
-import java.time.Month;
-import java.time.format.TextStyle;
 import java.util.*;
 import java.util.stream.Collectors;
 //
@@ -329,14 +333,13 @@ public class UserService {
                 .map(user -> (CompanyAccountant) user)
                 .collect(Collectors.toList());
     }
-
-    public User updateUserProfile(User currentUser, User updatedProfile) {
+    public User updateUserProfile(User currentUser, User updatedProfile, MultipartFile imageFile, boolean removeImage) {
         if (updatedProfile == null) {
             throw new IllegalArgumentException("Updated profile cannot be null");
         }
 
         currentUser.setPhone(updatedProfile.getPhone());
-
+         //update by role
         if (currentUser instanceof Company company && updatedProfile instanceof Company updatedCompany) {
             company.setCompanyName(updatedCompany.getCompanyName());
         } else if (currentUser instanceof IndependentAccountant independent && updatedProfile instanceof IndependentAccountant updatedIndependent) {
@@ -350,10 +353,42 @@ public class UserService {
             internal.setCin(updatedInternal.getCin());
             internal.setGender(updatedInternal.getGender());
         }
-
-        if (updatedProfile.getPassword() != null && !updatedProfile.getPassword().isBlank()) {
-            currentUser.setPassword(passwordEncoder.encode(updatedProfile.getPassword()));
+        //images:
+        // 1. Delete if requested
+        if (removeImage) {
+            if (currentUser.getProfileImageUrl() != null) {
+                Path oldImagePath = Paths.get("uploads", currentUser.getProfileImageUrl().replaceFirst("/uploads/", ""));
+                try {
+                    Files.deleteIfExists(oldImagePath);
+                } catch (IOException e) {
+                    System.err.println("Failed to delete image: " + e.getMessage());
+                }
+            }
+            currentUser.setProfileImageUrl(null);
         }
+
+        // 2. Replacement if new file provided
+        if (imageFile != null && !imageFile.isEmpty()) {
+            try {
+                // Delete old image if still present (avoids duplicates in case removeImage is false)
+                if (currentUser.getProfileImageUrl() != null) {
+                    Path oldImagePath = Paths.get("uploads", currentUser.getProfileImageUrl().replaceFirst("/uploads/", ""));
+                    Files.deleteIfExists(oldImagePath);
+                }
+
+                String originalFileName = Paths.get(imageFile.getOriginalFilename()).getFileName().toString();
+                String fileName = UUID.randomUUID() + "_" + originalFileName;
+                Path uploadDir = Paths.get("uploads/profile-images");
+                Files.createDirectories(uploadDir);
+                Path filePath = uploadDir.resolve(fileName);
+                Files.copy(imageFile.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+                currentUser.setProfileImageUrl("/uploads/profile-images/" + fileName);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to save profile image", e);
+            }
+        }
+
 
         return userRepository.save(currentUser);
     }
