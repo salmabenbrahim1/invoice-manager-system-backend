@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/folders")
@@ -27,48 +28,41 @@ public class FolderController {
     @PostMapping
     public ResponseEntity<Folder> createFolder(@RequestBody FolderDTO folderDto, Principal principal) {
         try {
-            // Get the authenticated user (creator - accountant or company)
             User creator = userService.getCurrentUser(principal);
 
-            // Check if the client exists or create a new client
             Client client;
             if (folderDto.getClientId() != null && !folderDto.getClientId().isEmpty()) {
-                // If clientId is provided, fetch the existing client
                 client = clientService.getClientById(folderDto.getClientId());
                 if (client == null) {
-                    // If client not found, return an error
                     return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
                 }
             } else {
-                // If clientId is not provided, create a new client
                 client = clientService.createClient(creator, folderDto.getClientName(),
                         folderDto.getClientEmail(), folderDto.getClientPhone(),
                         folderDto.getAssignedAccountantId());
             }
 
-            // Determine the creator's role
             Role creatorRole = null;
             if (creator instanceof Company) {
-                creatorRole = Role.COMPANY; // Company role
+                creatorRole = Role.COMPANY;
             } else if (creator instanceof IndependentAccountant) {
-                creatorRole = Role.INDEPENDENT_ACCOUNTANT; // Independent Accountant role
+                creatorRole = Role.INDEPENDENT_ACCOUNTANT;
             } else if (creator instanceof Admin) {
-                creatorRole = Role.ADMIN; // Admin role
+                creatorRole = Role.ADMIN;
             }
 
-            // Create the folder linked to the client and authenticated user
             Folder folder = new Folder(
                     folderDto.getFolderName(),
                     folderDto.getDescription(),
-                    client.getId(), // Use client ID (existing or newly created)
+                    client.getId(),
                     creator.getId(),
                     creatorRole
             );
 
-            // Create the folder
             Folder createdFolder = folderService.createFolder(folder);
 
-            return new ResponseEntity<>(createdFolder, HttpStatus.CREATED);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdFolder);
+
         } catch (Exception e) {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }

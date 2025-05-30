@@ -1,10 +1,7 @@
 package com.example.backend.controller;
 import com.example.backend.dto.AssignedClientDTO;
 import com.example.backend.dto.ClientDTO;
-import com.example.backend.model.AccountantAssignment;
-import com.example.backend.model.Client;
-import com.example.backend.model.CompanyAccountant;
-import com.example.backend.model.User;
+import com.example.backend.model.*;
 import com.example.backend.repository.AccountantAssignmentRepository;
 import com.example.backend.repository.ClientRepository;
 import com.example.backend.repository.UserRepository;
@@ -40,13 +37,27 @@ public class ClientController {
 
     // Create a new client
     @PostMapping
-    public ResponseEntity<Client> createClient(@RequestBody ClientDTO request, Principal principal) {
+    public ResponseEntity<?> createClient(@RequestBody ClientDTO request, Principal principal) {
         try {
             User creator = userService.getCurrentUser(principal);
-            Client createdClient = clientService.createClient(creator, request.getName(), request.getEmail(), request.getPhone(), request.getAssignedAccountantId());
-            return new ResponseEntity<>(createdClient, HttpStatus.CREATED);
+
+            // Create client
+            clientService.createClient(
+                    creator,
+                    request.getName(),
+                    request.getEmail(),
+                    request.getPhone(),
+                    request.getAssignedAccountantId()
+            );
+
+            // Check if creator is a company
+            if (creator instanceof Company) {
+                return ResponseEntity.status(HttpStatus.CREATED).body("Client has been created by a company.");
+            }
+
+            return ResponseEntity.status(HttpStatus.CREATED).body("Client has been created.");
         } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error while creating client.");
         }
     }
 

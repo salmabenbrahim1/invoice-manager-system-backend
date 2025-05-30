@@ -1,28 +1,30 @@
- package com.example.backend.model;
+package com.example.backend.model;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+@Getter
+@Setter
+@NoArgsConstructor
 @Document(collection = "settings")
 public class AISetting {
     @Id
     private String id;
-    private String currentEngine;
 
-    public AISetting() {}
+    private String selectedEngine;
 
-    public AISetting(String currentEngine) {
-        this.currentEngine = currentEngine;
-    }
+    private String geminiApiKey;
+    private String geminiModelVersion;
 
-    public String getId() {
-        return id;
-    }
+    private String deepseekApiKey;
+    private String deepseekEndpoint;
+    private String deepseekModelVersion;
 
-    public String getCurrentEngine() {
-        return currentEngine;
-    }
 
-    public void setCurrentEngine(String currentEngine) {
-        this.currentEngine = currentEngine;
-    }
+    // Add createdBy or orgId if needed (multi-tenant)
+    // getters and setters
 }
+

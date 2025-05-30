@@ -39,7 +39,7 @@ public class InvoiceDTO {
     private Double tva;
     private Double ht;
     private Double ttc;
-    private Double discount;
+    private String discount;
 
 
 }
