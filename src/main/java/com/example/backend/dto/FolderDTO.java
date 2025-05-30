@@ -19,5 +19,5 @@ public class FolderDTO {
     private String clientName;
     private String clientEmail;
     private String clientPhone;
-    private String assignedAccountantId; // Optional for companies
+    private String assignedAccountantId; //  for companies
 }
