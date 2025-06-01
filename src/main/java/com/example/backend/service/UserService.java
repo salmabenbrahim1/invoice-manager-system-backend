@@ -181,6 +181,7 @@ public class UserService {
 
     public User getUserById(String id, User currentUser) {
         User user = userRepository.findById(id).orElseThrow();
+
         if (!canView(currentUser, user)) {
             throw new SecurityException("Not authorized to view this user");
         }
@@ -393,5 +394,8 @@ public class UserService {
         return userRepository.save(currentUser);
     }
 
+    public List<User> findAccountantsByCompanyId(String companyId) {
+        return userRepository.findByRoleAndCreatedBy("INTERNAL_ACCOUNTANT", companyId);
+    }
 
 }

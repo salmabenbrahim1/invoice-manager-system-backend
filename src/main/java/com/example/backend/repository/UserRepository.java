@@ -17,6 +17,8 @@ public interface UserRepository extends MongoRepository<User, String> {
 
     List<User> findByRole(String role);
 
+    @Query("{ 'role': ?0, 'createdBy.$id': ObjectId(?1) }")
+    List<User> findByRoleAndCreatedBy(String role, String companyId);
 
 
 }

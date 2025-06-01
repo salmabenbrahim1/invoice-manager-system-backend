@@ -1,5 +1,4 @@
 package com.example.backend.model;
-//
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.mongodb.core.mapping.DBRef;
@@ -18,7 +17,6 @@ public class IndependentAccountant extends User {
         private List<String> folderIds = new ArrayList<>();
 
         public IndependentAccountant() {
-                // Set the role to include the ROLE_ prefix
                 this.setRole("INDEPENDENT_ACCOUNTANT");
         }
 
