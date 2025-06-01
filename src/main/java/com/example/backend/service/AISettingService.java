@@ -1,9 +1,10 @@
- package com.example.backend.service;
+package com.example.backend.service;
+
+import com.example.backend.dto.EngineDTO;
 import com.example.backend.model.AISetting;
 import com.example.backend.repository.AISettingRepository;
+import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
 
 @Service
 public class AISettingService {
@@ -14,20 +15,30 @@ public class AISettingService {
         this.repository = repository;
     }
 
-    public String getCurrentEngine() {
-        Optional<AISetting> setting = repository.findAll().stream().findFirst();
-        return setting.map(AISetting::getCurrentEngine).orElse("gemini");
-    }
+    public AISetting saveConfig(EngineDTO dto) {
+        AISetting config = repository.findTopByOrderByIdDesc().orElse(new AISetting());
+        config.setSelectedEngine(dto.getSelectedEngine());
 
-    public void setCurrentEngine(String engine) {
-        System.out.println("Setting engine to: " + engine);
-
-        if (!engine.equals("gemini") && !engine.equals("deepseek")) {
-            throw new IllegalArgumentException("Invalid engine: " + engine);
+        if ("gemini".equals(dto.getSelectedEngine())) {
+            config.setGeminiApiKey(dto.getGeminiApiKey());
+            config.setGeminiModelVersion(dto.getGeminiModelVersion());
+            config.setDeepseekApiKey(null);
+            config.setDeepseekEndpoint(null);
+        } else if ("deepseek".equals(dto.getSelectedEngine())) {
+            config.setDeepseekApiKey(dto.getDeepseekApiKey());
+            config.setDeepseekEndpoint(dto.getDeepseekEndpoint());
+            config.setDeepseekModelVersion(dto.getDeepseekModelVersion());
+            config.setDeepseekModelVersion(dto.getDeepseekModelVersion());
+            config.setGeminiApiKey(null);
+            config.setGeminiModelVersion(null);
+            config.setGeminiApiKey(null);
+            config.setGeminiModelVersion(null);
         }
 
-        AISetting setting = repository.findAll().stream().findFirst().orElse(new AISetting());
-        setting.setCurrentEngine(engine);
-        repository.save(setting);
+        return repository.save(config);
+    }
+
+    public AISetting getCurrentConfig() {
+        return repository.findTopByOrderByIdDesc().orElse(null);
     }
 }

@@ -1,11 +1,10 @@
 package com.example.backend.service;
 
-import com.example.backend.model.Client;
-import com.example.backend.model.Folder;
-import com.example.backend.model.Invoice;
+import com.example.backend.model.*;
 import com.example.backend.repository.ClientRepository;
 import com.example.backend.repository.FolderRepository;
 import com.example.backend.repository.InvoiceRepository;
+import com.example.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Service;
@@ -23,6 +22,8 @@ public class FolderService {
     @Autowired
     private ClientRepository clientRepository;
     private final InvoiceRepository invoiceRepository;
+    @Autowired
+    private UserRepository userRepository;
 
 
     public FolderService(InvoiceRepository invoiceRepository) {
@@ -32,7 +33,24 @@ public class FolderService {
 
     // Create folder method
     public Folder createFolder(Folder folder) {
-        return folderRepository.save(folder);
+        Folder savedFolder = folderRepository.save(folder);
+
+        // Find the creator user (company or independent accountant)
+        User creator = userRepository.findById(folder.getCreatedById())
+                .orElseThrow(() -> new RuntimeException("Creator user not found"));
+
+        // Add the folder ID to the user's folderIds list if possible
+        if (creator instanceof IndependentAccountant) {
+            ((IndependentAccountant) creator).addFolderId(savedFolder.getId());
+        }
+         else if (creator instanceof CompanyAccountant) {
+            ((CompanyAccountant) creator).addFolderId(savedFolder.getId());
+        }
+
+        // Save the updated user
+        userRepository.save(creator);
+
+        return savedFolder;
     }
 
     // Get all folders created by a specific user (company or accountant)

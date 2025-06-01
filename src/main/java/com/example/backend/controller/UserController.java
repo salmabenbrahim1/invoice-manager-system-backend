@@ -209,7 +209,11 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(false);
         }
     }
-
+    @GetMapping("/companies/{companyId}/accountants")
+    public ResponseEntity<List<User>> getAccountantsByCompany(@PathVariable String companyId) {
+        List<User> accountants = userService.findAccountantsByCompanyId(companyId);
+        return ResponseEntity.ok(accountants);
+    }
 
 
 

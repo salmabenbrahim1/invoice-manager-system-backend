@@ -29,8 +29,8 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
-    private final ClientRepository clientRepository;
-    private final FolderRepository folderRepository;
+    //private final ClientRepository clientRepository;
+    //private final FolderRepository folderRepository;
 
 
     private final InvoiceRepository invoiceRepository;
@@ -394,5 +394,8 @@ public class UserService {
         return userRepository.save(currentUser);
     }
 
+    public List<User> findAccountantsByCompanyId(String companyId) {
+        return userRepository.findByRoleAndCreatedBy("INTERNAL_ACCOUNTANT", companyId);
+    }
 
 }

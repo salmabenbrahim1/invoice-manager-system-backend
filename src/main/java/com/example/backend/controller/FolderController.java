@@ -1,5 +1,5 @@
 package com.example.backend.controller;
-//
+
 import com.example.backend.dto.FolderDTO;
 import com.example.backend.model.*;
 import com.example.backend.service.ClientService;
@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/folders")
@@ -28,49 +29,42 @@ public class FolderController {
     @PostMapping
     public ResponseEntity<Folder> createFolder(@RequestBody FolderDTO folderDto, Principal principal) {
         try {
-            // Get the authenticated user (creator - accountant or company)
             User creator = userService.getCurrentUser(principal);
 
-            // Check if the client exists or create a new client
             Client client;
             if (folderDto.getClientId() != null && !folderDto.getClientId().isEmpty()) {
-                // If clientId is provided, fetch the existing client
                 client = clientService.getClientById(folderDto.getClientId());
                 if (client == null) {
-                    // If client not found, return an error
                     return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
                 }
             } else {
-                // If clientId is not provided, create a new client
                 client = clientService.createClient(creator, folderDto.getClientName(),
                         folderDto.getClientEmail(), folderDto.getClientPhone(),
                         folderDto.getAssignedAccountantId());
             }
 
-            // Determine the creator's role
             Role creatorRole = null;
             if (creator instanceof Company) {
-                creatorRole = Role.COMPANY; // Company role
+                creatorRole = Role.COMPANY;
             } else if (creator instanceof IndependentAccountant) {
-                creatorRole = Role.INDEPENDENT_ACCOUNTANT; // Independent Accountant role
+                creatorRole = Role.INDEPENDENT_ACCOUNTANT;
             } else if (creator instanceof Admin) {
-                creatorRole = Role.ADMIN; // Admin role
+                creatorRole = Role.ADMIN;
             }
 
-            // Create the folder linked to the client and authenticated user
             Folder folder = new Folder(
                     folderDto.getFolderName(),
                     folderDto.getDescription(),
-                    client.getId(), // Use client ID (existing or newly created)
+                    client.getId(),
                     creator.getId(),
                     creatorRole
             );
 
-            // Create the folder
             Folder createdFolder = folderService.createFolder(folder);
 
 
-            return new ResponseEntity<>(createdFolder, HttpStatus.CREATED);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdFolder);
+
         } catch (Exception e) {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
@@ -131,39 +125,49 @@ public class FolderController {
     @GetMapping("/by-internal-accountant/{accountantId}")
     public ResponseEntity<List<Folder>> getFoldersByInternalAccountant(
             @PathVariable String accountantId, Principal principal) {
-
         try {
-            // Récupérer l'utilisateur connecté (doit être une entreprise)
             User currentUser = userService.getCurrentUser(principal);
 
-            if (!(currentUser instanceof Company)) {
+            // Allow admin or the company that created the accountant
+            boolean isAdmin = currentUser instanceof Admin;
+            boolean isCompany = currentUser instanceof Company;
+
+            if (!isAdmin && !isCompany) {
                 return new ResponseEntity<>(HttpStatus.FORBIDDEN);
             }
 
-            // Vérifier que l'entreprise a bien créé ce comptable interne
             User accountant = userService.getUserById(accountantId, currentUser);
+
             if (!(accountant instanceof CompanyAccountant)) {
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
 
-            if (!accountant.getCreatedBy().getId().equals(currentUser.getId())) {
+            // If it's a company, it can only see the accountants it created
+            if (isCompany && !accountant.getCreatedBy().getId().equals(currentUser.getId())) {
                 return new ResponseEntity<>(HttpStatus.FORBIDDEN);
             }
 
-            // Récupérer les dossiers créés par ce comptable interne
             List<Folder> folders = folderService.getFoldersByCreatorId(accountantId);
 
-            // Ajouter les infos client pour chaque dossier
             for (Folder folder : folders) {
-                Client client = clientService.getClientById(folder.getClientId());
-                if (client != null) {
-                    folder.setClient(client);
+                String clientId = folder.getClientId();
+                if (clientId != null) {
+                    try {
+                        Client client = clientService.getClientById(clientId);
+                        if (client != null) {
+                            folder.setClient(client);
+                        }
+                    } catch (Exception ex) {
+                        System.out.println("Failed to retrieve client ID:" + clientId);
+                    }
                 }
             }
 
             return new ResponseEntity<>(folders, HttpStatus.OK);
+
         } catch (Exception e) {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -184,23 +188,32 @@ public class FolderController {
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
 
-            // Ne pas vérifier createdBy si ADMIN (puisqu'il les crée directement)
             List<Folder> folders = folderService.getFoldersByCreatorId(accountantId);
 
             for (Folder folder : folders) {
-                Client client = clientService.getClientById(folder.getClientId());
-                if (client != null) {
-                    folder.setClient(client);
+                String clientId = folder.getClientId();
+                if (clientId != null) {
+                    try {
+                        Client client = clientService.getClientById(clientId);
+                        if (client != null) {
+                            folder.setClient(client);
+                        }
+                    } catch (Exception ex) {
+                        System.out.println(" Failed to retrieve client ID:" + clientId);
+                    }
                 }
             }
 
             return new ResponseEntity<>(folders, HttpStatus.OK);
 
         } catch (Exception e) {
-            e.printStackTrace(); // À garder pour debug
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+
+
 
     @PutMapping("/{folderId}/archive")
     public ResponseEntity<String> archiveFolder(@PathVariable String folderId) {
