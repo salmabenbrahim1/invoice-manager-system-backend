@@ -25,6 +25,8 @@ public class ClientService {
 
     @Autowired
     private AccountantAssignmentRepository assignmentRepository;
+    private final NotificationService notificationService;
+
 
     public Client createClient(User creator, String name, String email, String phone, String assignedAccountantId) {
         if (!(creator instanceof IndependentAccountant || creator instanceof Company)) {
@@ -74,7 +76,7 @@ public class ClientService {
         CompanyAccountant accountant = (CompanyAccountant) userRepository.findById(accountantId)
                 .orElseThrow(() -> new IllegalArgumentException("Accountant not found"));
 
-        // Delete all existing assignments for this client
+        //  Delete all existing assignments for this client
         assignmentRepository.deleteByClientId(new ObjectId(clientId));
 
         // Create new assignment
@@ -83,6 +85,10 @@ public class ClientService {
         assignment.setClient(client);
         assignment.setCompanyName(((Company) updater).getCompanyName());
         assignmentRepository.save(assignment);
+        String message = "The accounting firm " + assignment.getCompanyName()
+                + " has assigned you a new client: " + client.getName() + " (" + client.getEmail() + ")";
+
+        notificationService.createNotification(accountant.getId(), client.getId(), message);
 
         // Legacy updates
         client.setAssignedTo(accountant);
