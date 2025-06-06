@@ -74,7 +74,7 @@ public class ClientService {
         CompanyAccountant accountant = (CompanyAccountant) userRepository.findById(accountantId)
                 .orElseThrow(() -> new IllegalArgumentException("Accountant not found"));
 
-        // ❗ Delete all existing assignments for this client
+        // Delete all existing assignments for this client
         assignmentRepository.deleteByClientId(new ObjectId(clientId));
 
         // Create new assignment
@@ -97,7 +97,7 @@ public class ClientService {
 
 
     public List<Client> getClientsCreatedBy(User user) {
-        return clientRepository.findByCreatedBy_Id(user.getId());
+        return clientRepository.findByCreatedById(user.getId());
     }
 
 

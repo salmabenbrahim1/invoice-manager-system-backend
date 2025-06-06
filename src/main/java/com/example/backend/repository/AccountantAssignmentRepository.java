@@ -8,12 +8,12 @@ import org.springframework.data.mongodb.repository.Query;
 import java.util.List;
 
 public interface AccountantAssignmentRepository extends MongoRepository<AccountantAssignment, String> {
-    List<AccountantAssignment> findByAccountant_Id(String accountantId);
-    List<AccountantAssignment> findByClient_Id(String clientId);
+    List<AccountantAssignment> findByAccountantId(String accountantId);
     @Query(value = "{ 'client.$id' : ?0 }", delete = true)
-    void deleteByClientId(ObjectId clientId);    void deleteByClientId(String clientId);
-    @Query("{ 'client.$id' : ?0 }")
-    List<AccountantAssignment> findByClientId(String clientId);
+    void deleteByClientId(ObjectId clientId);
+    List<AccountantAssignment> findByClient_Id(String clientId);
+
+
 
 
 }

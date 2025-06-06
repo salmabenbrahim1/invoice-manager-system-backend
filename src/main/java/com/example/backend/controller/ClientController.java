@@ -84,7 +84,7 @@ public class ClientController {
         CompanyAccountant accountant = (CompanyAccountant) userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Accountant not found"));
 
-        List<AccountantAssignment> assignments = assignmentRepository.findByAccountant_Id(accountant.getId());
+        List<AccountantAssignment> assignments = assignmentRepository.findByAccountantId(accountant.getId());
 
         List<AssignedClientDTO> clientsWithAssignmentDate = assignments.stream()
                 .map(a -> new AssignedClientDTO(a.getClient(), a.getAssignedAt(), a.getCompanyName()))
