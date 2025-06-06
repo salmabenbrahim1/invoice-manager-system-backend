@@ -340,7 +340,12 @@ public class UserService {
         }
 
         currentUser.setPhone(updatedProfile.getPhone());
-         //update by role
+        if (updatedProfile.getPassword() != null && !updatedProfile.getPassword().isEmpty()) {
+            String hashedPassword = passwordEncoder.encode(updatedProfile.getPassword());
+            currentUser.setPassword(hashedPassword);
+        }
+
+        //update by role
         if (currentUser instanceof Company company && updatedProfile instanceof Company updatedCompany) {
             company.setCompanyName(updatedCompany.getCompanyName());
         } else if (currentUser instanceof IndependentAccountant independent && updatedProfile instanceof IndependentAccountant updatedIndependent) {

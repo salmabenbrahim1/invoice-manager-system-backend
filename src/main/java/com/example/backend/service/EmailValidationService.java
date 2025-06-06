@@ -4,13 +4,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.ResponseEntity;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @Service
 public class EmailValidationService {
 
-    private final String accessKey = "d1d34e9519ddb30016aae0586e6acf89";
-    private final String apiUrl = "https://apilayer.net/api/check?access_key=%s&email=%s&smtp=1&format=1";
+    private final String accessKey = "7399b7c54f474fca947e860e1691166c";
+    private final String apiUrl = "https://emailvalidation.abstractapi.com/v1/?api_key=%s&email=%s";
 
     public boolean isEmailValid(String email) {
         String url = String.format(apiUrl, accessKey, email);
@@ -20,7 +22,11 @@ public class EmailValidationService {
 
         if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
             Map<String, Object> data = response.getBody();
-            return Boolean.TRUE.equals(data.get("smtp_check"));
+            Map<String, Object> smtpCheck = (Map<String, Object>) data.get("is_smtp_valid");
+
+            if (smtpCheck != null && smtpCheck.containsKey("value")) {
+                return Boolean.TRUE.equals(smtpCheck.get("value"));
+            }
         }
 
         return false;
