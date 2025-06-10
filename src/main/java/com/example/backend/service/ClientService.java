@@ -44,18 +44,6 @@ public class ClientService {
 
         Client savedClient = clientRepository.save(client);
 
-        // Send email to the new client
-        String subject = "Welcome to Invox - Your Client Account";
-        String body = String.format("""
-                <html><body>
-                <p>Dear %s,</p>
-                <p>Your client account has been created.</p>
-                <p><b>Email:</b> %s<br><b>Temporary Password:</b> %s</p>
-                <p>Please login and update your password: <a href="http://localhost:3000/login">Login</a></p>
-                </body></html>
-                """, name, email, generatedPassword);
-        emailService.sendEmail(email, subject, body);
-
         return savedClient;
     }
 

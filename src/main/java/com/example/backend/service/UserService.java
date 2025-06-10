@@ -29,11 +29,6 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
-    //private final ClientRepository clientRepository;
-    //private final FolderRepository folderRepository;
-
-
-    private final InvoiceRepository invoiceRepository;
 
 
     private <T extends User> T populateCommonFields(T user, UserDTO dto, User creator) {

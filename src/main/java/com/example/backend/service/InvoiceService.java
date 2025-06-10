@@ -118,11 +118,13 @@ public class InvoiceService {
         invoice.setSellerName(extractedData.getSellerName());
         invoice.setSellerAddress(extractedData.getSellerAddress());
         invoice.setSellerPhone(extractedData.getSellerPhone());
-        invoice.setSellerSiretNumber(extractedData.getSellerSiretNumber());
+        invoice.setSellerEmail(extractedData.getSellerEmail());
 
         invoice.setCustomerName(extractedData.getCustomerName());
         invoice.setCustomerAddress(extractedData.getCustomerAddress());
         invoice.setCustomerPhone(extractedData.getCustomerPhone());
+        invoice.setCustomerEmail(extractedData.getCustomerEmail());
+
 
         invoice.setTvaNumber(extractedData.getTvaNumber());
         invoice.setTvaRate(extractedData.getTvaRate());
@@ -193,7 +195,7 @@ public class InvoiceService {
     }
 
 
-    //
+
     public void updateInvoiceCount(String folderId) {
         Folder folder = folderRepository.findById(folderId)
                 .orElseThrow(() -> new RuntimeException("Folder not found with ID: " + folderId));

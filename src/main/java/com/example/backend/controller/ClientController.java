@@ -28,7 +28,6 @@ public class ClientController {
     private final ClientService clientService;
     private final UserService userService;
     private final UserRepository userRepository;
-    private final ClientRepository clientRepository;
     private final AccountantAssignmentRepository assignmentRepository;
 
 
