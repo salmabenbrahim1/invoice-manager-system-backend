@@ -1,35 +1,42 @@
 package com.example.backend.service;
 
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.http.ResponseEntity;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @Service
 public class EmailValidationService {
 
-    private final String accessKey = "f99076b450cba9b2236f189457a2d1ec";
-    private final String apiUrl = "https://apilayer.net/api/check?access_key=%s&email=%s&smtp=1&format=1";
+    private final String apiKey = "a40c3cebf93448a4b08fdeca3b92e381";
+    private final String apiUrl = "https://emailvalidation.abstractapi.com/v1/?api_key=%s&email=%s";
 
 
+    private final RestTemplate restTemplate = new RestTemplate();
     public boolean isEmailValid(String email) {
-        String url = String.format(apiUrl, accessKey, email);
+        try {
+            String url = String.format(apiUrl, apiKey, email);
 
-        RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    url, HttpMethod.GET, null, Map.class
+            );
 
-        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-            Map<String, Object> data = response.getBody();
-            Map<String, Object> smtpCheck = (Map<String, Object>) data.get("is_smtp_valid");
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                Map<String, Object> data = response.getBody();
 
-            if (smtpCheck != null && smtpCheck.containsKey("value")) {
-                return Boolean.TRUE.equals(smtpCheck.get("value"));
+                String deliverability = (String) data.get("deliverability");
+
+                System.out.println("API result: deliverability=" + deliverability);
+
+                return "DELIVERABLE".equalsIgnoreCase(deliverability);
+            } else {
+                System.err.println("Incorrect API response.");
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-
         return false;
     }
+
 }
