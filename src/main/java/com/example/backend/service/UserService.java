@@ -29,11 +29,6 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
-    //private final ClientRepository clientRepository;
-    //private final FolderRepository folderRepository;
-
-
-    private final InvoiceRepository invoiceRepository;
 
 
     private <T extends User> T populateCommonFields(T user, UserDTO dto, User creator) {
@@ -171,10 +166,10 @@ public class UserService {
 
     public List<?> getAllUsers(User currentUser) {
         if (currentUser instanceof Admin) {
-            return userRepository.findByCreatedBy_Id(currentUser.getId());
+            return userRepository.findByCreatedById(currentUser.getId());
         }
         if (currentUser instanceof Company) {
-            return userRepository.findByCreatedBy_Id(currentUser.getId());
+            return userRepository.findByCreatedById(currentUser.getId());
         }
         return List.of(currentUser);
     }
@@ -329,7 +324,7 @@ public class UserService {
             throw new SecurityException("Only a Company can access its internal accountants.");
         }
 
-        return userRepository.findByCreatedBy_Id(currentUser.getId()).stream()
+        return userRepository.findByCreatedById(currentUser.getId()).stream()
                 .filter(user -> user instanceof CompanyAccountant)
                 .map(user -> (CompanyAccountant) user)
                 .collect(Collectors.toList());

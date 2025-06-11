@@ -76,7 +76,7 @@ public class InvoiceService {
     }
 
 
-    // 
+
     public Invoice saveInvoice(MultipartFile file, InvoiceDTO dto) throws IOException {
         // 1. Save the image file
         String savedImagePath = saveFile(file);
@@ -104,7 +104,7 @@ public class InvoiceService {
         return savedInvoice;
     }
 
-    //
+
     public Invoice updateExtractedData(String invoiceId, InvoiceDTO extractedData) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new RuntimeException("Invoice not found with ID: " + invoiceId));
@@ -118,11 +118,13 @@ public class InvoiceService {
         invoice.setSellerName(extractedData.getSellerName());
         invoice.setSellerAddress(extractedData.getSellerAddress());
         invoice.setSellerPhone(extractedData.getSellerPhone());
-        invoice.setSellerSiretNumber(extractedData.getSellerSiretNumber());
+        invoice.setSellerEmail(extractedData.getSellerEmail());
 
         invoice.setCustomerName(extractedData.getCustomerName());
         invoice.setCustomerAddress(extractedData.getCustomerAddress());
         invoice.setCustomerPhone(extractedData.getCustomerPhone());
+        invoice.setCustomerEmail(extractedData.getCustomerEmail());
+
 
         invoice.setTvaNumber(extractedData.getTvaNumber());
         invoice.setTvaRate(extractedData.getTvaRate());
@@ -173,21 +175,27 @@ public class InvoiceService {
 
         // If a new file is uploaded, save the file and update the image path
         if (file != null && !file.isEmpty()) {
-            String newImagePath = saveFile(file);  // Save new file and get the path
+            String newImagePath = saveFile(file);  // Save new file
             invoice.setImg(newImagePath);  // Update the invoice's image path
         }
 
-        // Update other fields
-        invoice.setInvoiceName(dto.getInvoiceName());
-        invoice.setStatus(dto.getStatus());
-        invoice.setFolderId(dto.getFolderId());
+        // Update fields only if they are not null
+        if (dto.getInvoiceName() != null) {
+            invoice.setInvoiceName(dto.getInvoiceName());
+        }
+        if (dto.getStatus() != null) {
+            invoice.setStatus(dto.getStatus());
+        }
+        if (dto.getFolderId() != null) {
+            invoice.setFolderId(dto.getFolderId());
+        }
 
         // Save and return the updated invoice
         return invoiceRepository.save(invoice);
     }
 
 
-    //
+
     public void updateInvoiceCount(String folderId) {
         Folder folder = folderRepository.findById(folderId)
                 .orElseThrow(() -> new RuntimeException("Folder not found with ID: " + folderId));

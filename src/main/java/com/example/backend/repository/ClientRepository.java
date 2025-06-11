@@ -13,7 +13,7 @@ import java.util.Optional;
 //
 @Repository
 public interface ClientRepository extends MongoRepository<Client, String> {
-    List<Client> findByCreatedBy_Id(String id);
+    List<Client> findByCreatedById(String id);
 
     Optional<Client> findById(String id);
 

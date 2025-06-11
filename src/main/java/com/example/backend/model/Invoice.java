@@ -34,18 +34,20 @@ public class Invoice {
    private String sellerName;
    private String sellerAddress;
    private String sellerPhone;
-   private String sellerSiretNumber;
+   private String sellerEmail;
 
 
    private String customerName;
    private String customerAddress;
    private String customerPhone;
+    private String customerEmail;
 
-   private String tvaNumber;
+
+    private String tvaNumber;
    private String tvaRate;
-   private Double tva;
-   private Double ht;
-   private Double ttc;
+   private String tva;
+   private String ht;
+   private String ttc;
    private String discount;
 
 }

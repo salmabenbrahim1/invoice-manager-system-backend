@@ -12,6 +12,7 @@ public class EmailValidationService {
     private final String apiKey = "a40c3cebf93448a4b08fdeca3b92e381";
     private final String apiUrl = "https://emailvalidation.abstractapi.com/v1/?api_key=%s&email=%s";
 
+
     private final RestTemplate restTemplate = new RestTemplate();
     public boolean isEmailValid(String email) {
         try {

@@ -18,7 +18,7 @@ public class Notification {
     private CompanyAccountant accountant;
 
     @DBRef
-    private Client client; // ✅ ajout du client
+    private Client client;
 
     private String message;
 

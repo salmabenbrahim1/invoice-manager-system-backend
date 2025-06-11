@@ -60,7 +60,6 @@ public class DashboardService {
             sortedEntries = sortedEntries.stream().limit(10).collect(Collectors.toList());
 
 
-            // You can put this list in the stats
             Map<String, List<Folder>> top10FoldersByUser = sortedEntries.stream()
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
@@ -71,9 +70,6 @@ public class DashboardService {
 
             long activeUsers = nonAdminUsers.stream().filter(User::isActive).count();
             long inactiveUsers = nonAdminUsers.size() - activeUsers;
-
-
-
 
 
 
@@ -97,7 +93,7 @@ public class DashboardService {
 
             Map<String, Long> companyInvoices = new HashMap<>();
             for (User company : companies) {
-                List<Client> clients = clientRepository.findByCreatedBy_Id(company.getId());
+                List<Client> clients = clientRepository.findByCreatedById(company.getId());
                 List<String> clientIds = clients.stream().map(Client::getId).collect(Collectors.toList());
                 List<Folder> folders = folderRepository.findByClientIdIn(clientIds);
                 long invoiceCount = folders.stream()
@@ -144,14 +140,17 @@ public class DashboardService {
 
 
 
-        } else if (currentUser instanceof IndependentAccountant) {
+        }
+        else if (currentUser instanceof IndependentAccountant) {
             IndependentAccountant accountant = (IndependentAccountant) currentUser;
-            long totalClients = clientRepository.findByCreatedBy_Id(accountant.getId()).size();
+            long totalClients = clientRepository.findByCreatedById(accountant.getId()).size();
             long totalFolders = folderRepository.findByCreatedById(accountant.getId()).size();
 
             List<Folder> folders = folderRepository.findByCreatedById(accountant.getId());
 
             long totalInvoices = folders.stream().mapToLong(Folder::getInvoiceCount).sum();
+
+            long failedInvoices = 0;
 
             // Initialize month maps
             Map<String, Long> invoicesByMonth = new LinkedHashMap<>();
@@ -163,6 +162,7 @@ public class DashboardService {
             }
 
             long pendingInvoices = 0;
+
             // Count invoices and statuses per month
             for (Folder folder : folders) {
                 for (String invoiceId : folder.getInvoiceIds()) {
@@ -177,9 +177,16 @@ public class DashboardService {
                         if ("pending".equalsIgnoreCase(invoice.getStatus())) {
                             pendingInvoices++;
                         }
+                        if ("failed".equalsIgnoreCase(invoice.getStatus())) {
+                            failedInvoices++;
+                        }
                     }
                 }
             }
+
+            // Calculate total validated invoices count after populating the map
+            long validatedInvoicesCount = validatedByMonth.values().stream().mapToLong(Long::longValue).sum();
+
             // Prepare chart data
             List<Map<String, Object>> invoiceData = invoicesByMonth.entrySet().stream().map(entry -> {
                 Map<String, Object> point = new HashMap<>();
@@ -202,26 +209,20 @@ public class DashboardService {
             stats.put("archivedFiles", archivedFolders);
             LocalDateTime now = LocalDateTime.now();
 
-            // of the year
             LocalDateTime startOfYear = now.withDayOfYear(1).with(LocalTime.MIN);
-
-            //of the month
             LocalDateTime startOfMonth = now.withDayOfMonth(1).with(LocalTime.MIN);
 
-            // Archived this year
             long archivedThisYear = folders.stream()
                     .filter(Folder::isArchived)
                     .filter(folder -> folder.getCreatedAt().isAfter(startOfYear))
                     .count();
             stats.put("archivedThisYear", archivedThisYear);
 
-            // Archived this month
             long archivedThisMonth = folders.stream()
                     .filter(Folder::isArchived)
                     .filter(folder -> folder.getCreatedAt().isAfter(startOfMonth))
                     .count();
             stats.put("recentArchives", archivedThisMonth);
-
 
             long favoriteFolders = folders.stream()
                     .filter(Folder::isFavorite)
@@ -235,9 +236,10 @@ public class DashboardService {
             stats.put("pendingInvoices", pendingInvoices);
             stats.put("invoiceData", invoiceData);
             stats.put("validatedInvoices", validatedData);
-
-
-        } else if (currentUser instanceof Company) {
+            stats.put("failedInvoices", failedInvoices);
+            stats.put("validatedInvoicesCount", validatedInvoicesCount);
+        }
+        else if (currentUser instanceof Company) {
             Company company = (Company) currentUser;
 
 
@@ -246,7 +248,7 @@ public class DashboardService {
             long totalInternalAccountants = internalAccountants.size();
             long activeInternalAccountants = internalAccountants.stream().filter(User::isActive).count();
             long inactiveInternalAccountants = totalInternalAccountants - activeInternalAccountants;
-            List<Client> clients = clientRepository.findByCreatedBy_Id(company.getId());
+            List<Client> clients = clientRepository.findByCreatedById(company.getId());
             long totalClients = clients.size();
 
             List<String> clientIds = clients.stream().map(Client::getId).collect(Collectors.toList());
@@ -254,40 +256,50 @@ public class DashboardService {
 
             // Initialize monthly counters
             Map<String, Long> invoicesByMonth = new LinkedHashMap<>();
+            Map<String, Long> validatedByMonth = new LinkedHashMap<>();
             Map<String, Long> pendingInvoicesByMonth = new LinkedHashMap<>();
             for (Month month : Month.values()) {
                 String monthName = month.getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
                 invoicesByMonth.put(monthName, 0L);
                 pendingInvoicesByMonth.put(monthName, 0L);
+                validatedByMonth.put(monthName, 0L);
+
+
             }
 
             long uploadedInvoices = folders.stream()
                     .mapToLong(folder -> folder.getInvoiceIds() != null ? folder.getInvoiceIds().size() : 0)
                     .sum();
+
             long pendingInvoices = 0;
-            long validatedInvoices = 0;
             long failedInvoices = 0;
-            // Count invoice status per folder
+
             for (Folder folder : folders) {
                 if (folder.getInvoiceIds() != null) {
                     for (String invoiceId : folder.getInvoiceIds()) {
                         Invoice invoice = invoiceRepository.findById(invoiceId).orElse(null);
                         if (invoice != null && invoice.getAddedAt() != null) {
-                            String month = invoice.getAddedAt().getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
-                            invoicesByMonth.put(month, invoicesByMonth.getOrDefault(month, 0L) + 1);
+                            Month monthEnum = invoice.getAddedAt().getMonth();  // e.g., Month.JANUARY
+                            String monthName = monthEnum.getDisplayName(TextStyle.SHORT, Locale.ENGLISH);  // e.g., "Jan"
 
-                            if ("pending".equalsIgnoreCase(invoice.getStatus())) {
+                            invoicesByMonth.merge(monthName, 1L, Long::sum);
+
+                            String status = invoice.getStatus();
+                            if ("validated".equalsIgnoreCase(status)) {
+                                validatedByMonth.merge(monthName, 1L, Long::sum);
+                            } else if ("pending".equalsIgnoreCase(status)) {
                                 pendingInvoices++;
-                                pendingInvoicesByMonth.put(month, pendingInvoicesByMonth.getOrDefault(month, 0L) + 1);
-                            } else if ("Validated".equalsIgnoreCase(invoice.getStatus())) {
-                                validatedInvoices++;
-                            } else if ("FAILED".equalsIgnoreCase(invoice.getStatus())) {
+                                pendingInvoicesByMonth.merge(monthName, 1L, Long::sum);  // This now works!
+                            } else if ("failed".equalsIgnoreCase(status)) {
                                 failedInvoices++;
                             }
                         }
                     }
                 }
             }
+
+            long validatedInvoicesCount = validatedByMonth.values().stream().mapToLong(Long::longValue).sum();
+
 
 
             // Prepare chart data
@@ -297,13 +309,14 @@ public class DashboardService {
                 point.put("invoices", entry.getValue());
                 return point;
             }).collect(Collectors.toList());
+            List<Map<String, Object>> pendingData = pendingInvoicesByMonth.entrySet().stream()
+                    .map(entry -> {
+                        Map<String, Object> point = new HashMap<>();
+                        point.put("date", entry.getKey());  // e.g., "Jan"
+                        point.put("pending", entry.getValue());
+                        return point;
+                    }).collect(Collectors.toList());
 
-            List<Map<String, Object>> pendingData = pendingInvoicesByMonth.entrySet().stream().map(entry -> {
-                Map<String, Object> point = new HashMap<>();
-                point.put("name", entry.getKey());
-                point.put("pending", entry.getValue());
-                return point;
-            }).collect(Collectors.toList());
 
             List<AccountantAssignment> assignments = accountantAssignmentRepository.findAll().stream()
                     .filter(a -> a.getClient() != null && clientIds.contains(a.getClient().getId()))
@@ -322,67 +335,66 @@ public class DashboardService {
             stats.put("totalClients", totalClients);
             stats.put("uploadedInvoices", uploadedInvoices);
             stats.put("pendingInvoices", pendingInvoices);
-            stats.put("validatedInvoices", validatedInvoices);
+            stats.put("pendingInvoicesByMonth", pendingData);
+            stats.put("validatedInvoicesCount", validatedInvoicesCount);
             stats.put("failedInvoices", failedInvoices);
             stats.put("assignedClients", assignedClients);
             stats.put("monthlyInvoices", invoiceData);
-            stats.put("pendingByAccountant", pendingData);
             stats.put("unassignedClients", unassignedClients);
             stats.put("activeInternalAccountants", activeInternalAccountants);
             stats.put("disabledInternalAccountants", inactiveInternalAccountants);
 
         }
 
-        else if ("INTERNAL_ACCOUNTANT".equalsIgnoreCase(currentUser.getRole())) {
+        else if (currentUser instanceof CompanyAccountant) {
             User internalAccountant = currentUser;
 
-            // Retrieve clients assigned to this internal accountant
-            List<AccountantAssignment> assignments = accountantAssignmentRepository.findByAccountant_Id(internalAccountant.getId());
+            List<AccountantAssignment> assignments = accountantAssignmentRepository.findByAccountantId(internalAccountant.getId());
             Set<String> clientIds = assignments.stream()
                     .map(a -> a.getClient().getId())
                     .collect(Collectors.toSet());
 
-            // Retrieve folders related to assigned clients
             List<Folder> folders = folderRepository.findByClientIdIn(new ArrayList<>(clientIds));
 
             long totalClients = clientIds.size();
             long totalFolders = folders.size();
-
-            // Calculate the total invoices in these folders
             long totalInvoices = folders.stream()
                     .mapToLong(folder -> folder.getInvoiceIds() != null ? folder.getInvoiceIds().size() : 0)
                     .sum();
 
-            // Initialize the months for the stats
             Map<String, Long> invoicesByMonth = new LinkedHashMap<>();
             Map<String, Long> validatedByMonth = new LinkedHashMap<>();
+            long pendingInvoices = 0;
+            long failedInvoices = 0;
+
             for (Month month : Month.values()) {
                 String monthName = month.getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
-                invoicesByMonth.put(monthName, 0L);
                 validatedByMonth.put(monthName, 0L);
             }
 
-            long pendingInvoices = 0;
-            // Browse invoices and tally by month and status
             for (Folder folder : folders) {
                 if (folder.getInvoiceIds() != null) {
                     for (String invoiceId : folder.getInvoiceIds()) {
                         Invoice invoice = invoiceRepository.findById(invoiceId).orElse(null);
                         if (invoice != null && invoice.getAddedAt() != null) {
                             String month = invoice.getAddedAt().getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
-                            invoicesByMonth.put(month, invoicesByMonth.get(month) + 1);
+                            invoicesByMonth.merge(month, 1L, Long::sum);
 
-                            if ("validated".equalsIgnoreCase(invoice.getStatus())) {
-                                validatedByMonth.put(month, validatedByMonth.get(month) + 1);
-                            }
-                            if ("pending".equalsIgnoreCase(invoice.getStatus())) {
+                            String status = invoice.getStatus();
+                            if ("validated".equalsIgnoreCase(status)) {
+                                validatedByMonth.merge(month, 1L, Long::sum);
+                            } else if ("pending".equalsIgnoreCase(status)) {
                                 pendingInvoices++;
+
+                            } else if ("failed".equalsIgnoreCase(status)) {
+                                failedInvoices++;
                             }
                         }
                     }
                 }
             }
 
+            long validatedInvoicesCount = validatedByMonth.values().stream().mapToLong(Long::longValue).sum();
 
             List<Map<String, Object>> invoiceData = invoicesByMonth.entrySet().stream().map(entry -> {
                 Map<String, Object> point = new HashMap<>();
@@ -398,46 +410,37 @@ public class DashboardService {
                 return point;
             }).collect(Collectors.toList());
 
-            // Calculation of archives
-            long archivedFolders = folders.stream()
-                    .filter(Folder::isArchived)
-                    .count();
-            stats.put("archivedFiles", archivedFolders);
-
-
-
+            long archivedFolders = folders.stream().filter(Folder::isArchived).count();
             LocalDateTime now = LocalDateTime.now();
-            LocalDateTime startOfYear = now.withDayOfYear(1).with(LocalTime.MIN);
-            LocalDateTime startOfMonth = now.withDayOfMonth(1).with(LocalTime.MIN);
-
             long archivedThisYear = folders.stream()
                     .filter(Folder::isArchived)
-                    .filter(folder -> folder.getCreatedAt().isAfter(startOfYear))
+                    .filter(folder -> folder.getCreatedAt().isAfter(now.withDayOfYear(1).with(LocalTime.MIN)))
                     .count();
 
             long archivedThisMonth = folders.stream()
                     .filter(Folder::isArchived)
-                    .filter(folder -> folder.getCreatedAt().isAfter(startOfMonth))
+                    .filter(folder -> folder.getCreatedAt().isAfter(now.withDayOfMonth(1).with(LocalTime.MIN)))
                     .count();
-
-            stats.put("archivedThisYear", archivedThisYear);
-            stats.put("recentArchives", archivedThisMonth);
 
             long favoriteFolders = folders.stream()
                     .filter(Folder::isFavorite)
                     .filter(folder -> !folder.isArchived())
                     .count();
-            stats.put("favoriteFolders", favoriteFolders);
-
-
 
             stats.put("totalClients", totalClients);
             stats.put("totalFolders", totalFolders);
             stats.put("totalInvoices", totalInvoices);
             stats.put("pendingInvoices", pendingInvoices);
+            stats.put("failedInvoices", failedInvoices);
+            stats.put("validatedInvoicesCount", validatedInvoicesCount);
             stats.put("invoiceData", invoiceData);
             stats.put("validatedInvoices", validatedData);
+            stats.put("archivedFiles", archivedFolders);
+            stats.put("archivedThisYear", archivedThisYear);
+            stats.put("recentArchives", archivedThisMonth);
+            stats.put("favoriteFolders", favoriteFolders);
         }
+
 
 
         return stats;
