@@ -41,20 +41,18 @@ public class ClientController {
             User creator = userService.getCurrentUser(principal);
 
             // Create client
-            clientService.createClient(
+            Client savedClient = clientService.createClient(
                     creator,
                     request.getName(),
                     request.getEmail(),
                     request.getPhone(),
                     request.getAssignedAccountantId()
             );
+            return ResponseEntity.status(HttpStatus.CREATED).body(savedClient);
 
-            // Check if creator is a company
-            if (creator instanceof Company) {
-                return ResponseEntity.status(HttpStatus.CREATED).body("Client has been created by a company.");
-            }
 
-            return ResponseEntity.status(HttpStatus.CREATED).body("Client has been created.");
+
+
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error while creating client.");
         }

@@ -64,6 +64,7 @@ public class UserService {
                 checkAdminPrivileges(currentUser);
                 newUser = populateCommonFields(new Company(), dto, currentUser);
                 Company company = (Company) newUser;
+                company.setFiscalNumber(dto.getFiscalNumber());
                 company.setCompanyName(dto.getCompanyName());
                 break;
 
@@ -123,7 +124,7 @@ public class UserService {
                             "<p><b>Username</b>: %s</p>" +
                             "<p><b>Temporary Password</b>: %s</p>" +
                             "<p>Please log in to the system and change your password as soon as possible for security reasons.</p>" +
-                            "To access your account, please visit the following link: http://localhost:3000/login <br><br>" +
+                            "To access your account, please visit the following link: https://www.invox.com <br><br>" +
 
                             "<p>If you have any questions or need assistance, feel free to contact our support team.</p>" +
                             "<p>Best regards,<br>Invox Team</p>" +
@@ -140,7 +141,7 @@ public class UserService {
                             "<p><b>Username</b>: %s</p>" +
                             "<p><b>Temporary Password</b>: %s</p>" +
                             "<p>Please log in to the system and change your password as soon as possible for security reasons.</p>" +
-                            "To access your account, please visit the following link: http://localhost:3000/login <br><br>" +
+                            "To access your account, please visit the following link: https://www.invox.com/ <br><br>" +
 
                             "<p>If you have any questions or need assistance, feel free to contact our support team.</p>" +
                             "<p>Best regards,<br>Invox Team</p>" +

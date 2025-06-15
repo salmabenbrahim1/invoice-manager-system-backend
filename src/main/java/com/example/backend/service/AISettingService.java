@@ -24,13 +24,12 @@ public class AISettingService {
             config.setGeminiModelVersion(dto.getGeminiModelVersion());
             config.setDeepseekApiKey(null);
             config.setDeepseekEndpoint(null);
+            config.setDeepseekModelVersion(null);
+
         } else if ("deepseek".equals(dto.getSelectedEngine())) {
             config.setDeepseekApiKey(dto.getDeepseekApiKey());
             config.setDeepseekEndpoint(dto.getDeepseekEndpoint());
             config.setDeepseekModelVersion(dto.getDeepseekModelVersion());
-            config.setDeepseekModelVersion(dto.getDeepseekModelVersion());
-            config.setGeminiApiKey(null);
-            config.setGeminiModelVersion(null);
             config.setGeminiApiKey(null);
             config.setGeminiModelVersion(null);
         }

@@ -21,6 +21,7 @@ public class UserDTO {
     private String gender;
 
     // For companies
+    private String fiscalNumber;
     private String companyName;
 
 

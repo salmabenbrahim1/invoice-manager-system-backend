@@ -23,8 +23,5 @@ public class AISetting {
     private String deepseekEndpoint;
     private String deepseekModelVersion;
 
-
-    // Add createdBy or orgId if needed (multi-tenant)
-    // getters and setters
 }
 

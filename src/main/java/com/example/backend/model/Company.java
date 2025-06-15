@@ -11,9 +11,9 @@ import java.util.List;
 @Setter
 public class Company extends User {
 
+    private String fiscalNumber;
 
     private String companyName;
-    //eventually adding siretNumber
 
     // List of Internal accountants IDs
     private List<String> accountantIds = new ArrayList<>();
